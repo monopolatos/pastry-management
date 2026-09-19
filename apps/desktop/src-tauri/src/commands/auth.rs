@@ -83,6 +83,27 @@ pub fn create_user(
 }
 
 #[tauri::command]
+pub fn change_password(
+    db: State<DbState>,
+    session: State<SessionState>,
+    current_password: String,
+    new_password: String,
+) -> AppResult<()> {
+    let user_id = session
+        .0
+        .lock()
+        .map_err(|e| crate::error::AppError::new(e.to_string()))?
+        .as_ref()
+        .map(|s| s.user.id)
+        .ok_or_else(|| crate::error::AppError::new("You must be signed in to do that."))?;
+
+    let conn =
+        db.0.lock()
+            .map_err(|e| crate::error::AppError::new(e.to_string()))?;
+    auth::change_password(&conn, user_id, &current_password, &new_password)
+}
+
+#[tauri::command]
 pub fn logout(session: State<SessionState>) -> AppResult<()> {
     let mut guard = session
         .0

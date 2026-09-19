@@ -3,6 +3,10 @@ import type { FormEvent } from "react";
 import { login } from "../../api/auth";
 import type { SessionInfo } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 
 interface LoginFormProps {
   initialUsername?: string;
@@ -33,44 +37,56 @@ export function LoginForm({ initialUsername = "", infoMessage, onLoggedIn }: Log
   }
 
   return (
-    <main className="container">
-      <h1>Pastry Management</h1>
-      {infoMessage && <p className="form-info">{infoMessage}</p>}
-      <form className="stacked-form" onSubmit={handleSubmit}>
-        {formError.general && <p className="form-error">{formError.general}</p>}
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-center font-heading text-lg">Pastry Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {infoMessage && <p className="mb-4 text-sm font-medium text-primary">{infoMessage}</p>}
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            {formError.general && (
+              <p className="text-sm font-medium text-destructive">{formError.general}</p>
+            )}
 
-        <label htmlFor="login-username">Username</label>
-        <input
-          id="login-username"
-          name="username"
-          type="text"
-          autoComplete="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        {formError.fieldError("username") && (
-          <p className="field-error">{formError.fieldError("username")}</p>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="login-username">Username</Label>
+              <Input
+                id="login-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+              {formError.fieldError("username") && (
+                <p className="text-sm text-destructive">{formError.fieldError("username")}</p>
+              )}
+            </div>
 
-        <label htmlFor="login-password">Password</label>
-        <input
-          id="login-password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {formError.fieldError("password") && (
-          <p className="field-error">{formError.fieldError("password")}</p>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="login-password">Password</Label>
+              <Input
+                id="login-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              {formError.fieldError("password") && (
+                <p className="text-sm text-destructive">{formError.fieldError("password")}</p>
+              )}
+            </div>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+            <Button type="submit" disabled={submitting} className="mt-2 w-full">
+              {submitting ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }

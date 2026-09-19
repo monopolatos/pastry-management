@@ -10,6 +10,11 @@ import type {
   RecipeSummary,
 } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Textarea } from "../ui/textarea";
 
 interface RecipeFormProps {
   initial?: RecipeDetail;
@@ -215,202 +220,251 @@ export function RecipeForm({
   }
 
   return (
-    <form className="stacked-form" onSubmit={handleSubmit}>
-      {formError.general && <p className="form-error">{formError.general}</p>}
-
-      <label htmlFor="recipe-name">Name</label>
-      <input
-        id="recipe-name"
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      {formError.fieldError("name") && (
-        <p className="field-error">{formError.fieldError("name")}</p>
+    <form className="flex max-w-2xl flex-col gap-4" onSubmit={handleSubmit}>
+      {formError.general && (
+        <p className="text-sm font-medium text-destructive">{formError.general}</p>
       )}
 
-      <label htmlFor="recipe-description">Description</label>
-      <textarea
-        id="recipe-description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="recipe-name">Name</Label>
+        <Input
+          id="recipe-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        {formError.fieldError("name") && (
+          <p className="text-sm text-destructive">{formError.fieldError("name")}</p>
+        )}
+      </div>
 
-      <label htmlFor="recipe-category">Category</label>
-      <input
-        id="recipe-category"
-        type="text"
-        list="recipe-category-options"
-        placeholder="e.g. Cakes, Pastries, Fillings…"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      />
-      <datalist id="recipe-category-options">
-        {categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <p className="hint">Pick an existing category or type a new one.</p>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="recipe-description">Description</Label>
+        <Textarea
+          id="recipe-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
 
-      <label htmlFor="recipe-instructions">Instructions</label>
-      <textarea
-        id="recipe-instructions"
-        value={instructions}
-        onChange={(e) => setInstructions(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="recipe-category">Category</Label>
+        <Input
+          id="recipe-category"
+          type="text"
+          list="recipe-category-options"
+          placeholder="e.g. Cakes, Pastries, Fillings…"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+        <datalist id="recipe-category-options">
+          {categories.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+        <p className="text-xs text-muted-foreground">
+          Pick an existing category or type a new one.
+        </p>
+      </div>
 
-      <label htmlFor="recipe-prep-time">Prep time (minutes)</label>
-      <input
-        id="recipe-prep-time"
-        type="number"
-        step="1"
-        min="0"
-        value={prepTimeMinutes}
-        onChange={(e) => setPrepTimeMinutes(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="recipe-instructions">Instructions</Label>
+        <Textarea
+          id="recipe-instructions"
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+        />
+      </div>
 
-      <label htmlFor="recipe-cook-time">Cook time (minutes)</label>
-      <input
-        id="recipe-cook-time"
-        type="number"
-        step="1"
-        min="0"
-        value={cookTimeMinutes}
-        onChange={(e) => setCookTimeMinutes(e.target.value)}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="recipe-prep-time">Prep time (minutes)</Label>
+          <Input
+            id="recipe-prep-time"
+            type="number"
+            step="1"
+            min="0"
+            value={prepTimeMinutes}
+            onChange={(e) => setPrepTimeMinutes(e.target.value)}
+          />
+        </div>
 
-      <label htmlFor="recipe-yield-quantity">Yield quantity</label>
-      <input
-        id="recipe-yield-quantity"
-        type="number"
-        step="any"
-        min="0"
-        value={yieldQuantity}
-        onChange={(e) => setYieldQuantity(e.target.value)}
-        required
-      />
-      {formError.fieldError("yield_quantity") && (
-        <p className="field-error">{formError.fieldError("yield_quantity")}</p>
-      )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="recipe-cook-time">Cook time (minutes)</Label>
+          <Input
+            id="recipe-cook-time"
+            type="number"
+            step="1"
+            min="0"
+            value={cookTimeMinutes}
+            onChange={(e) => setCookTimeMinutes(e.target.value)}
+          />
+        </div>
+      </div>
 
-      <label htmlFor="recipe-yield-unit">Yield unit</label>
-      <select
-        id="recipe-yield-unit"
-        value={yieldUnitCode}
-        onChange={(e) => setYieldUnitCode(e.target.value)}
-      >
-        {units.map((unit) => (
-          <option key={unit.code} value={unit.code}>
-            {unit.code} ({unit.kind})
-          </option>
-        ))}
-      </select>
-      {formError.fieldError("yield_unit_code") && (
-        <p className="field-error">{formError.fieldError("yield_unit_code")}</p>
-      )}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="recipe-yield-quantity">Yield quantity</Label>
+          <Input
+            id="recipe-yield-quantity"
+            type="number"
+            step="any"
+            min="0"
+            value={yieldQuantity}
+            onChange={(e) => setYieldQuantity(e.target.value)}
+            required
+          />
+          {formError.fieldError("yield_quantity") && (
+            <p className="text-sm text-destructive">{formError.fieldError("yield_quantity")}</p>
+          )}
+        </div>
 
-      <label htmlFor="recipe-notes">Notes</label>
-      <textarea id="recipe-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="recipe-yield-unit">Yield unit</Label>
+          <Select value={yieldUnitCode} onValueChange={setYieldUnitCode}>
+            <SelectTrigger id="recipe-yield-unit" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {units.map((unit) => (
+                <SelectItem key={unit.code} value={unit.code}>
+                  {unit.code} ({unit.kind})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {formError.fieldError("yield_unit_code") && (
+            <p className="text-sm text-destructive">{formError.fieldError("yield_unit_code")}</p>
+          )}
+        </div>
+      </div>
 
-      <fieldset className="inline-fieldset">
-        <legend>Ingredients</legend>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="recipe-notes">Notes</Label>
+        <Textarea id="recipe-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
+
+      <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
+        <legend className="px-1 text-sm font-semibold">Ingredients</legend>
 
         {formError.fieldError("ingredients") && (
-          <p className="field-error">{formError.fieldError("ingredients")}</p>
+          <p className="text-sm text-destructive">{formError.fieldError("ingredients")}</p>
         )}
 
         {rows.map((row) => (
-          <div className="inline-fieldset" key={row.key}>
-            <label htmlFor={`ingredient-type-${row.key}`}>Type</label>
-            <select
-              id={`ingredient-type-${row.key}`}
-              value={row.ingredient_type}
-              onChange={(e) => handleTypeChange(row.key, e.target.value as IngredientType)}
-            >
-              <option value="raw_material">Raw material</option>
-              <option value="recipe">Recipe (sub-recipe)</option>
-            </select>
+          <div key={row.key} className="flex flex-col gap-3 rounded-lg border p-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`ingredient-type-${row.key}`}>Type</Label>
+              <Select
+                value={row.ingredient_type}
+                onValueChange={(value) => handleTypeChange(row.key, value as IngredientType)}
+              >
+                <SelectTrigger id={`ingredient-type-${row.key}`} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="raw_material">Raw material</SelectItem>
+                  <SelectItem value="recipe">Recipe (sub-recipe)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {row.ingredient_type === "raw_material" ? (
-              <>
-                <label htmlFor={`ingredient-material-${row.key}`}>Raw material</label>
-                <select
-                  id={`ingredient-material-${row.key}`}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`ingredient-material-${row.key}`}>Raw material</Label>
+                <Select
                   value={row.raw_material_id}
-                  onChange={(e) => updateRow(row.key, { raw_material_id: e.target.value })}
+                  onValueChange={(value) => updateRow(row.key, { raw_material_id: value })}
                 >
-                  <option value="">(select a material)</option>
-                  {rawMaterials.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </>
+                  <SelectTrigger id={`ingredient-material-${row.key}`} className="w-full">
+                    <SelectValue placeholder="(select a material)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rawMaterials.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             ) : (
-              <>
-                <label htmlFor={`ingredient-recipe-${row.key}`}>Sub-recipe</label>
-                <select
-                  id={`ingredient-recipe-${row.key}`}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`ingredient-recipe-${row.key}`}>Sub-recipe</Label>
+                <Select
                   value={row.sub_recipe_id}
-                  onChange={(e) => updateRow(row.key, { sub_recipe_id: e.target.value })}
+                  onValueChange={(value) => updateRow(row.key, { sub_recipe_id: value })}
                 >
-                  <option value="">(select a recipe)</option>
-                  {recipeOptions.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </>
+                  <SelectTrigger id={`ingredient-recipe-${row.key}`} className="w-full">
+                    <SelectValue placeholder="(select a recipe)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recipeOptions.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
-            <label htmlFor={`ingredient-quantity-${row.key}`}>Quantity</label>
-            <input
-              id={`ingredient-quantity-${row.key}`}
-              type="number"
-              step="any"
-              min="0"
-              value={row.quantity}
-              onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`ingredient-quantity-${row.key}`}>Quantity</Label>
+                <Input
+                  id={`ingredient-quantity-${row.key}`}
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={row.quantity}
+                  onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
+                />
+              </div>
 
-            <label htmlFor={`ingredient-unit-${row.key}`}>Unit</label>
-            <select
-              id={`ingredient-unit-${row.key}`}
-              value={row.unit_code}
-              onChange={(e) => updateRow(row.key, { unit_code: e.target.value })}
-            >
-              {units.map((unit) => (
-                <option key={unit.code} value={unit.code}>
-                  {unit.code} ({unit.kind})
-                </option>
-              ))}
-            </select>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`ingredient-unit-${row.key}`}>Unit</Label>
+                <Select
+                  value={row.unit_code}
+                  onValueChange={(value) => updateRow(row.key, { unit_code: value })}
+                >
+                  <SelectTrigger id={`ingredient-unit-${row.key}`} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units.map((unit) => (
+                      <SelectItem key={unit.code} value={unit.code}>
+                        {unit.code} ({unit.kind})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-            <div className="form-actions">
-              <button type="button" onClick={() => removeRow(row.key)}>
+            <div>
+              <Button type="button" variant="outline" size="sm" onClick={() => removeRow(row.key)}>
                 Remove ingredient
-              </button>
+              </Button>
             </div>
           </div>
         ))}
 
-        <div className="form-actions">
-          <button type="button" onClick={addRow}>
+        <div>
+          <Button type="button" variant="outline" onClick={addRow}>
             Add ingredient
-          </button>
+          </Button>
         </div>
       </fieldset>
 
-      <div className="form-actions">
-        <button type="submit" disabled={submitting}>
+      <div className="flex gap-3">
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Saving…" : initial ? "Save changes" : "Add recipe"}
-        </button>
-        <button type="button" onClick={onCancel} disabled={submitting}>
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

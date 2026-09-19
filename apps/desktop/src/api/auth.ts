@@ -33,3 +33,13 @@ export function logout(): Promise<void> {
 export function currentSession(): Promise<SessionInfo | null> {
   return invoke("current_session");
 }
+
+/**
+ * Changes the current session's own password. The backend reads the caller's user id from the
+ * session server-side — only the two password strings are passed. Rejects with the usual
+ * `{ message, field }` shape: a wrong current password comes back with `field: "current_password"`,
+ * a too-short new password with `field: "password"` (see src-tauri/src/auth/mod.rs).
+ */
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return invoke("change_password", { currentPassword, newPassword });
+}

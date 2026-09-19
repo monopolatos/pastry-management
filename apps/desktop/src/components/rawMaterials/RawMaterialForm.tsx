@@ -3,6 +3,11 @@ import type { FormEvent } from "react";
 import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABELS } from "../../api/types";
 import type { RawMaterial, RawMaterialInput, Supplier } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Textarea } from "../ui/textarea";
 
 /** An optional first purchase to record in the same step as creating the material, so a price can
  * be set immediately instead of requiring a second trip to the material's detail page. */
@@ -36,6 +41,8 @@ const KNOWN_FIELDS = ["name", "base_unit_code", "default_supplier_id"] as const;
  * purchase price" default; a strategy picker can return once changing it actually does something.
  */
 const DEFAULT_PRICING_STRATEGY = "latest";
+
+const NONE_VALUE = "__none__";
 
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -146,158 +153,201 @@ export function RawMaterialForm({
   }
 
   return (
-    <form className="stacked-form" onSubmit={handleSubmit}>
-      {formError.general && <p className="form-error">{formError.general}</p>}
-
-      <label htmlFor="material-name">Name</label>
-      <input
-        id="material-name"
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      {formError.fieldError("name") && (
-        <p className="field-error">{formError.fieldError("name")}</p>
+    <form className="flex max-w-xl flex-col gap-4" onSubmit={handleSubmit}>
+      {formError.general && (
+        <p className="text-sm font-medium text-destructive">{formError.general}</p>
       )}
 
-      <label htmlFor="material-description">Description</label>
-      <textarea
-        id="material-description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="material-name">Name</Label>
+        <Input
+          id="material-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        {formError.fieldError("name") && (
+          <p className="text-sm text-destructive">{formError.fieldError("name")}</p>
+        )}
+      </div>
 
-      <label htmlFor="material-category">Category</label>
-      <input
-        id="material-category"
-        type="text"
-        list="material-category-options"
-        placeholder="e.g. Dry goods, Dairy, Fruit…"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      />
-      <datalist id="material-category-options">
-        {categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <p className="hint">Pick an existing category or type a new one.</p>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="material-description">Description</Label>
+        <Textarea
+          id="material-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
 
-      <label htmlFor="material-base-unit">Base unit</label>
-      <select
-        id="material-base-unit"
-        value={baseUnitCode}
-        onChange={(e) => handleBaseUnitChange(e.target.value)}
-      >
-        {BASE_UNIT_CODES.map((code) => (
-          <option key={code} value={code}>
-            {UNIT_LABELS[code]}
-          </option>
-        ))}
-      </select>
-      {formError.fieldError("base_unit_code") && (
-        <p className="field-error">{formError.fieldError("base_unit_code")}</p>
-      )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="material-category">Category</Label>
+        <Input
+          id="material-category"
+          type="text"
+          list="material-category-options"
+          placeholder="e.g. Dry goods, Dairy, Fruit…"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+        <datalist id="material-category-options">
+          {categories.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+        <p className="text-xs text-muted-foreground">
+          Pick an existing category or type a new one.
+        </p>
+      </div>
 
-      <label htmlFor="material-default-supplier">Default supplier</label>
-      <select
-        id="material-default-supplier"
-        value={defaultSupplierId}
-        onChange={(e) => setDefaultSupplierId(e.target.value)}
-      >
-        <option value="">(none)</option>
-        {suppliers.map((supplier) => (
-          <option key={supplier.id} value={supplier.id}>
-            {supplier.name}
-          </option>
-        ))}
-      </select>
-      {formError.fieldError("default_supplier_id") && (
-        <p className="field-error">{formError.fieldError("default_supplier_id")}</p>
-      )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="material-base-unit">Base unit</Label>
+        <Select value={baseUnitCode} onValueChange={handleBaseUnitChange}>
+          <SelectTrigger id="material-base-unit" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BASE_UNIT_CODES.map((code) => (
+              <SelectItem key={code} value={code}>
+                {UNIT_LABELS[code]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {formError.fieldError("base_unit_code") && (
+          <p className="text-sm text-destructive">{formError.fieldError("base_unit_code")}</p>
+        )}
+      </div>
 
-      <label htmlFor="material-notes">Notes</label>
-      <textarea id="material-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="material-default-supplier">Default supplier</Label>
+        <Select
+          value={defaultSupplierId === "" ? NONE_VALUE : defaultSupplierId}
+          onValueChange={(value) => setDefaultSupplierId(value === NONE_VALUE ? "" : value)}
+        >
+          <SelectTrigger id="material-default-supplier" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+            {suppliers.map((supplier) => (
+              <SelectItem key={supplier.id} value={String(supplier.id)}>
+                {supplier.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {formError.fieldError("default_supplier_id") && (
+          <p className="text-sm text-destructive">{formError.fieldError("default_supplier_id")}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="material-notes">Notes</Label>
+        <Textarea id="material-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
 
       {isCreate && (
-        <fieldset className="inline-fieldset">
-          <legend>
-            Set a starting price <span className="hint">(optional — you can add this later)</span>
+        <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
+          <legend className="px-1 text-sm font-semibold">
+            Set a starting price{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional — you can add this later)
+            </span>
           </legend>
 
-          <label htmlFor="material-purchase-supplier">
-            Supplier <span className="hint">(optional)</span>
-          </label>
-          <select
-            id="material-purchase-supplier"
-            value={purchaseSupplierId}
-            onChange={(e) => setPurchaseSupplierId(e.target.value)}
-          >
-            <option value="">(none)</option>
-            {suppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="material-purchase-supplier">
+              Supplier <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Select
+              value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
+              onValueChange={(value) => setPurchaseSupplierId(value === NONE_VALUE ? "" : value)}
+            >
+              <SelectTrigger id="material-purchase-supplier" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+                {suppliers.map((supplier) => (
+                  <SelectItem key={supplier.id} value={String(supplier.id)}>
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <label htmlFor="material-purchase-date">Purchase date</label>
-          <input
-            id="material-purchase-date"
-            type="date"
-            value={purchaseDate}
-            onChange={(e) => setPurchaseDate(e.target.value)}
-          />
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="material-purchase-date">Purchase date</Label>
+            <Input
+              id="material-purchase-date"
+              type="date"
+              value={purchaseDate}
+              onChange={(e) => setPurchaseDate(e.target.value)}
+            />
+          </div>
 
-          <label htmlFor="material-purchase-quantity">Quantity</label>
-          <input
-            id="material-purchase-quantity"
-            type="number"
-            step="any"
-            min="0"
-            value={purchaseQuantity}
-            onChange={(e) => setPurchaseQuantity(e.target.value)}
-          />
-          {formError.fieldError("purchase_quantity") && (
-            <p className="field-error">{formError.fieldError("purchase_quantity")}</p>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="material-purchase-quantity">Quantity</Label>
+            <Input
+              id="material-purchase-quantity"
+              type="number"
+              step="any"
+              min="0"
+              value={purchaseQuantity}
+              onChange={(e) => setPurchaseQuantity(e.target.value)}
+            />
+            {formError.fieldError("purchase_quantity") && (
+              <p className="text-sm text-destructive">
+                {formError.fieldError("purchase_quantity")}
+              </p>
+            )}
+          </div>
 
-          <label htmlFor="material-purchase-unit">Purchase unit</label>
-          <select
-            id="material-purchase-unit"
-            value={purchaseUnitCode}
-            onChange={(e) => setPurchaseUnitCode(e.target.value)}
-          >
-            {compatiblePurchaseUnits.map((code) => (
-              <option key={code} value={code}>
-                {UNIT_LABELS[code]}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="material-purchase-unit">Purchase unit</Label>
+            <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
+              <SelectTrigger id="material-purchase-unit" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {compatiblePurchaseUnits.map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {UNIT_LABELS[code]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <label htmlFor="material-purchase-total-price">Total price paid (€)</label>
-          <input
-            id="material-purchase-total-price"
-            type="number"
-            step="0.01"
-            min="0"
-            value={purchaseTotalPrice}
-            onChange={(e) => setPurchaseTotalPrice(e.target.value)}
-          />
-          {formError.fieldError("purchase_total_price") && (
-            <p className="field-error">{formError.fieldError("purchase_total_price")}</p>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="material-purchase-total-price">Total price paid (€)</Label>
+            <Input
+              id="material-purchase-total-price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={purchaseTotalPrice}
+              onChange={(e) => setPurchaseTotalPrice(e.target.value)}
+            />
+            {formError.fieldError("purchase_total_price") && (
+              <p className="text-sm text-destructive">
+                {formError.fieldError("purchase_total_price")}
+              </p>
+            )}
+          </div>
         </fieldset>
       )}
 
-      <div className="form-actions">
-        <button type="submit" disabled={submitting}>
+      <div className="flex gap-3">
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Saving…" : initial ? "Save changes" : "Add raw material"}
-        </button>
-        <button type="button" onClick={onCancel} disabled={submitting}>
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

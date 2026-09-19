@@ -23,7 +23,7 @@ Give a pastry shop owner or employee a single local-first tool to:
 | Layer          | Choice                                                                                                                   |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Desktop shell  | [Tauri 2](https://tauri.app) (Rust core + native OS webview)                                                             |
-| UI             | React 18 + TypeScript, Vite                                                                                              |
+| UI             | React 18 + TypeScript, Vite, Tailwind CSS v4 + shadcn/ui                                                                 |
 | Business logic | Pure TypeScript (`packages/core`) — no I/O, independently unit-tested                                                    |
 | Database       | SQLite, accessed only from the Rust core (`rusqlite`)                                                                    |
 | Monetary math  | `decimal.js`, persisted as scaled integers — no floating-point rounding error                                            |
@@ -130,15 +130,16 @@ Design: `docs/backup-and-updates.md` §3. **Not yet implemented** — tracked in
 
 ## 14. Known Limitations (current phase)
 
-- No system-package-manager Tauri Linux build has been verified on the primary development
-  machine in this environment; CI is the source of truth for cross-platform build validation until
-  a Linux dev machine has `libwebkit2gtk-4.1-dev` and related packages installed.
 - OS-level code signing (Apple notarization, Windows Authenticode) requires certificates that must
   be supplied by the project owner as GitHub Actions secrets; without them, unsigned builds will
   trigger OS security warnings on first run. Update-package signing (Tauri's Ed25519 updater
   signing) is independent of this and works regardless.
 - Cloud backup: Dropbox only in v1; Google Drive is interface-complete but not implemented (see
   §11).
+- Internationalization: the UI is English-only. An i18n scaffold exists (`apps/desktop/src/lib/i18n.tsx`)
+  and is used for the navigation and Phase 5 screens, but the Phase 3/4 forms (raw materials,
+  suppliers, recipes) have not been retrofitted to route their strings through it — that's a
+  follow-up task, not silently incomplete work.
 - See `docs/roadmap.md` for the full phase-by-phase feature status.
 
 ## License

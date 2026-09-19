@@ -210,6 +210,41 @@ pub fn authenticate(conn: &Connection, username: &str, password: &str) -> AppRes
     })
 }
 
+/// Changes a user's own password. Requires the current password to verify identity — there is no
+/// admin-reset path in v1 (see docs/architecture.md §3's documented password-recovery limitation).
+pub fn change_password(
+    conn: &Connection,
+    user_id: i64,
+    current_password: &str,
+    new_password: &str,
+) -> AppResult<()> {
+    validate_password(new_password)?;
+
+    let password_hash: String = conn
+        .query_row(
+            "SELECT password_hash FROM users WHERE id = ?1",
+            [user_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| AppError::new("User not found."))?;
+
+    if !verify_password(current_password, &password_hash)? {
+        return Err(AppError::field(
+            "current_password",
+            "Current password is incorrect.",
+        ));
+    }
+
+    let new_hash = hash_password(new_password)?;
+    conn.execute(
+        "UPDATE users SET password_hash = ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?2",
+        rusqlite::params![new_hash, user_id],
+    )?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -310,5 +345,36 @@ mod tests {
 
         let result = authenticate(&conn, "alice", "password123");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn change_password_succeeds_with_correct_current_password() {
+        let conn = memory_db_with_users_table();
+        let user = create_owner_account(&conn, "alice", "password123").unwrap();
+
+        change_password(&conn, user.id, "password123", "newpassword456").unwrap();
+
+        assert!(authenticate(&conn, "alice", "newpassword456").is_ok());
+        assert!(authenticate(&conn, "alice", "password123").is_err());
+    }
+
+    #[test]
+    fn change_password_rejects_wrong_current_password() {
+        let conn = memory_db_with_users_table();
+        let user = create_owner_account(&conn, "alice", "password123").unwrap();
+
+        let err = change_password(&conn, user.id, "wrong-password", "newpassword456").unwrap_err();
+        assert_eq!(err.field.as_deref(), Some("current_password"));
+
+        assert!(authenticate(&conn, "alice", "password123").is_ok());
+    }
+
+    #[test]
+    fn change_password_rejects_a_too_short_new_password() {
+        let conn = memory_db_with_users_table();
+        let user = create_owner_account(&conn, "alice", "password123").unwrap();
+
+        let err = change_password(&conn, user.id, "password123", "short").unwrap_err();
+        assert_eq!(err.field.as_deref(), Some("password"));
     }
 }

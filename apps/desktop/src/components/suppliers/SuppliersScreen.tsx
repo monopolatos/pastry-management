@@ -3,6 +3,23 @@ import * as suppliersApi from "../../api/suppliers";
 import { toAppError } from "../../api/errors";
 import type { Supplier, SupplierInput } from "../../api/types";
 import { SupplierForm } from "./SupplierForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; supplier: Supplier };
 
@@ -13,7 +30,6 @@ export function SuppliersScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ mode: "closed" });
   const [rowError, setRowError] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -59,109 +75,137 @@ export function SuppliersScreen() {
     setRowError(null);
     try {
       await suppliersApi.deleteSupplier(id);
-      setConfirmDeleteId(null);
       refresh();
     } catch (err) {
       setRowError(toAppError(err).message);
-      setConfirmDeleteId(null);
     }
   }
 
   return (
-    <section>
-      <div className="screen-header">
-        <h2>Suppliers</h2>
-        <div className="screen-header-actions">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="font-heading text-xl font-semibold">Suppliers</h2>
+        <div className="flex items-center gap-4">
+          <Label className="flex items-center gap-2 font-normal">
+            <Checkbox
               checked={includeInactive}
-              onChange={(e) => setIncludeInactive(e.target.checked)}
+              onCheckedChange={(checked) => setIncludeInactive(checked === true)}
             />
             Show inactive
-          </label>
-          <button type="button" onClick={() => setPanel({ mode: "create" })}>
+          </Label>
+          <Button type="button" onClick={() => setPanel({ mode: "create" })}>
             Add supplier
-          </button>
+          </Button>
         </div>
       </div>
 
-      {rowError && <p className="form-error">{rowError}</p>}
-      {loadError && <p className="form-error">{loadError}</p>}
+      {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
+      {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
 
       {panel.mode === "create" && (
-        <div className="panel">
-          <h3>Add supplier</h3>
-          <SupplierForm onSubmit={handleCreate} onCancel={() => setPanel({ mode: "closed" })} />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Add supplier</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SupplierForm onSubmit={handleCreate} onCancel={() => setPanel({ mode: "closed" })} />
+          </CardContent>
+        </Card>
       )}
 
       {panel.mode === "edit" && (
-        <div className="panel">
-          <h3>Edit supplier</h3>
-          <SupplierForm
-            initial={panel.supplier}
-            onSubmit={(input) => handleUpdate(panel.supplier.id, input)}
-            onCancel={() => setPanel({ mode: "closed" })}
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit supplier</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SupplierForm
+              initial={panel.supplier}
+              onSubmit={(input) => handleUpdate(panel.supplier.id, input)}
+              onCancel={() => setPanel({ mode: "closed" })}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {loading ? (
-        <p>Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : suppliers.length === 0 ? (
-        <p>No suppliers yet.</p>
+        <p className="text-sm text-muted-foreground">No suppliers yet.</p>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Contact person</th>
-              <th>Phone</th>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {suppliers.map((supplier) => (
-              <tr key={supplier.id}>
-                <td>{supplier.name}</td>
-                <td>{supplier.contact_person ?? "—"}</td>
-                <td>{supplier.phone ?? "—"}</td>
-                <td>{supplier.email ?? "—"}</td>
-                <td>
-                  <span className={supplier.is_active ? "badge-active" : "badge-inactive"}>
-                    {supplier.is_active ? "Active" : "Archived"}
-                  </span>
-                </td>
-                <td className="row-actions">
-                  <button type="button" onClick={() => setPanel({ mode: "edit", supplier })}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => handleArchiveToggle(supplier)}>
-                    {supplier.is_active ? "Archive" : "Reactivate"}
-                  </button>
-                  {confirmDeleteId === supplier.id ? (
-                    <>
-                      <span>Delete permanently?</span>
-                      <button type="button" onClick={() => handleDelete(supplier.id)}>
-                        Confirm
-                      </button>
-                      <button type="button" onClick={() => setConfirmDeleteId(null)}>
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => setConfirmDeleteId(supplier.id)}>
-                      Delete
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact person</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {suppliers.map((supplier) => (
+                <TableRow key={supplier.id}>
+                  <TableCell className="font-medium">{supplier.name}</TableCell>
+                  <TableCell>{supplier.contact_person ?? "—"}</TableCell>
+                  <TableCell>{supplier.phone ?? "—"}</TableCell>
+                  <TableCell>{supplier.email ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={supplier.is_active ? "default" : "secondary"}>
+                      {supplier.is_active ? "Active" : "Archived"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPanel({ mode: "edit", supplier })}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleArchiveToggle(supplier)}
+                      >
+                        {supplier.is_active ? "Archive" : "Reactivate"}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button type="button" variant="destructive" size="sm">
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete "{supplier.name}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently deletes the supplier. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => handleDelete(supplier.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );

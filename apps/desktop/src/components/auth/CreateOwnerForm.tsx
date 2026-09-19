@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { createOwnerAccount } from "../../api/auth";
 import { useFormError } from "../../hooks/useFormError";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 
 interface CreateOwnerFormProps {
   onCreated: (username: string) => void;
@@ -39,58 +43,76 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
   }
 
   return (
-    <main className="container">
-      <h1>Pastry Management</h1>
-      <p>No accounts exist yet. Create the owner account to get started.</p>
-      <form className="stacked-form" onSubmit={handleSubmit}>
-        {formError.general && <p className="form-error">{formError.general}</p>}
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-center font-heading text-lg">Pastry Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            No accounts exist yet. Create the owner account to get started.
+          </p>
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            {formError.general && (
+              <p className="text-sm font-medium text-destructive">{formError.general}</p>
+            )}
 
-        <label htmlFor="owner-username">Username</label>
-        <input
-          id="owner-username"
-          name="username"
-          type="text"
-          autoComplete="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        {formError.fieldError("username") && (
-          <p className="field-error">{formError.fieldError("username")}</p>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="owner-username">Username</Label>
+              <Input
+                id="owner-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+              {formError.fieldError("username") && (
+                <p className="text-sm text-destructive">{formError.fieldError("username")}</p>
+              )}
+            </div>
 
-        <label htmlFor="owner-password">Password</label>
-        <input
-          id="owner-password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {formError.fieldError("password") && (
-          <p className="field-error">{formError.fieldError("password")}</p>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="owner-password">Password</Label>
+              <Input
+                id="owner-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              {formError.fieldError("password") && (
+                <p className="text-sm text-destructive">{formError.fieldError("password")}</p>
+              )}
+            </div>
 
-        <label htmlFor="owner-confirm-password">Confirm password</label>
-        <input
-          id="owner-confirm-password"
-          name="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-        />
-        {formError.fieldError("confirmPassword") && (
-          <p className="field-error">{formError.fieldError("confirmPassword")}</p>
-        )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="owner-confirm-password">Confirm password</Label>
+              <Input
+                id="owner-confirm-password"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              {formError.fieldError("confirmPassword") && (
+                <p className="text-sm text-destructive">
+                  {formError.fieldError("confirmPassword")}
+                </p>
+              )}
+            </div>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Creating…" : "Create owner account"}
-        </button>
-      </form>
+            <Button type="submit" disabled={submitting} className="mt-2 w-full">
+              {submitting ? "Creating…" : "Create owner account"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }

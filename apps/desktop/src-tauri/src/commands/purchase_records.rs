@@ -1,7 +1,9 @@
 use tauri::State;
 
 use crate::auth::SessionState;
-use crate::db::repositories::purchase_records::{self, PurchaseRecord, PurchaseRecordInput};
+use crate::db::repositories::purchase_records::{
+    self, PurchaseRecord, PurchaseRecordInput, RecentPurchaseRecord,
+};
 use crate::error::{AppError, AppResult};
 use crate::DbState;
 
@@ -28,4 +30,13 @@ pub fn create_purchase_record(
         .as_ref()
         .map(|s| s.user.id);
     purchase_records::create(&conn, input, created_by_user_id)
+}
+
+#[tauri::command]
+pub fn list_recent_purchase_records(
+    db: State<DbState>,
+    limit: i64,
+) -> AppResult<Vec<RecentPurchaseRecord>> {
+    let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
+    purchase_records::list_recent(&conn, limit)
 }

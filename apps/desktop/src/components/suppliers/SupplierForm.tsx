@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { Supplier, SupplierInput } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
 
 interface SupplierFormProps {
   initial?: Supplier;
@@ -55,73 +59,89 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
   }
 
   return (
-    <form className="stacked-form" onSubmit={handleSubmit}>
-      {formError.general && <p className="form-error">{formError.general}</p>}
-
-      <label htmlFor="supplier-name">Name</label>
-      <input
-        id="supplier-name"
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      {formError.fieldError("name") && (
-        <p className="field-error">{formError.fieldError("name")}</p>
+    <form className="flex max-w-xl flex-col gap-4" onSubmit={handleSubmit}>
+      {formError.general && (
+        <p className="text-sm font-medium text-destructive">{formError.general}</p>
       )}
 
-      <label htmlFor="supplier-contact-person">Contact person</label>
-      <input
-        id="supplier-contact-person"
-        type="text"
-        value={contactPerson}
-        onChange={(e) => setContactPerson(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-name">Name</Label>
+        <Input
+          id="supplier-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        {formError.fieldError("name") && (
+          <p className="text-sm text-destructive">{formError.fieldError("name")}</p>
+        )}
+      </div>
 
-      <label htmlFor="supplier-phone">Phone</label>
-      <input
-        id="supplier-phone"
-        type="text"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-contact-person">Contact person</Label>
+        <Input
+          id="supplier-contact-person"
+          type="text"
+          value={contactPerson}
+          onChange={(e) => setContactPerson(e.target.value)}
+        />
+      </div>
 
-      <label htmlFor="supplier-email">Email</label>
-      <input
-        id="supplier-email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      {formError.fieldError("email") && (
-        <p className="field-error">{formError.fieldError("email")}</p>
-      )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-phone">Phone</Label>
+        <Input
+          id="supplier-phone"
+          type="text"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </div>
 
-      <label htmlFor="supplier-address">Address</label>
-      <textarea
-        id="supplier-address"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-email">Email</Label>
+        <Input
+          id="supplier-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        {formError.fieldError("email") && (
+          <p className="text-sm text-destructive">{formError.fieldError("email")}</p>
+        )}
+      </div>
 
-      <label htmlFor="supplier-vat">VAT number</label>
-      <input
-        id="supplier-vat"
-        type="text"
-        value={vatNumber}
-        onChange={(e) => setVatNumber(e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-address">Address</Label>
+        <Textarea
+          id="supplier-address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+      </div>
 
-      <label htmlFor="supplier-notes">Notes</label>
-      <textarea id="supplier-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-vat">VAT number</Label>
+        <Input
+          id="supplier-vat"
+          type="text"
+          value={vatNumber}
+          onChange={(e) => setVatNumber(e.target.value)}
+        />
+      </div>
 
-      <div className="form-actions">
-        <button type="submit" disabled={submitting}>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier-notes">Notes</Label>
+        <Textarea id="supplier-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
+
+      <div className="flex gap-3">
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Saving…" : initial ? "Save changes" : "Add supplier"}
-        </button>
-        <button type="button" onClick={onCancel} disabled={submitting}>
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

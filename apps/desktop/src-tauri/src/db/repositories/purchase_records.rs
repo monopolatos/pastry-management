@@ -161,6 +161,43 @@ pub fn list_for_material(
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RecentPurchaseRecord {
+    pub id: i64,
+    pub raw_material_id: i64,
+    pub raw_material_name: String,
+    pub purchase_date: String,
+    pub cost_per_base_unit_micros: i64,
+    pub base_unit_code: String,
+    pub created_at: String,
+}
+
+/// Cross-material recent purchase activity, for the dashboard's "recent price updates" feed —
+/// ordered by when the entry was recorded (`created_at`), not the purchase's own date, so a
+/// backfilled historical purchase doesn't jump to the top of "recent activity."
+pub fn list_recent(conn: &Connection, limit: i64) -> AppResult<Vec<RecentPurchaseRecord>> {
+    let mut stmt = conn.prepare(
+        "SELECT p.id, p.raw_material_id, m.name, p.purchase_date, p.cost_per_base_unit_micros,
+                m.base_unit_code, p.created_at
+         FROM purchase_records p
+         JOIN raw_materials m ON m.id = p.raw_material_id
+         ORDER BY p.created_at DESC, p.id DESC
+         LIMIT ?1",
+    )?;
+    let rows = stmt.query_map([limit], |r| {
+        Ok(RecentPurchaseRecord {
+            id: r.get(0)?,
+            raw_material_id: r.get(1)?,
+            raw_material_name: r.get(2)?,
+            purchase_date: r.get(3)?,
+            cost_per_base_unit_micros: r.get(4)?,
+            base_unit_code: r.get(5)?,
+            created_at: r.get(6)?,
+        })
+    })?;
+    Ok(rows.collect::<Result<Vec<_>, _>>()?)
+}
+
 pub fn create(
     conn: &Connection,
     input: PurchaseRecordInput,
@@ -394,5 +431,33 @@ mod tests {
             "most recent purchase should come first"
         );
         assert_eq!(history[2].purchase_date, "2026-01-01");
+    }
+
+    #[test]
+    fn list_recent_spans_materials_and_respects_limit() {
+        let conn = test_conn();
+        let (material_id, supplier_id) = seed_flour_and_supplier(&conn);
+
+        for date in ["2026-01-01", "2026-02-01", "2026-03-01"] {
+            create(
+                &conn,
+                PurchaseRecordInput {
+                    raw_material_id: material_id,
+                    supplier_id: Some(supplier_id),
+                    purchase_date: date.into(),
+                    quantity: 1.0,
+                    purchase_unit_code: "kg".into(),
+                    total_price_micros: 2_000_000,
+                    expiration_date: None,
+                    notes: None,
+                },
+                None,
+            )
+            .unwrap();
+        }
+
+        let recent = list_recent(&conn, 2).unwrap();
+        assert_eq!(recent.len(), 2, "should respect the limit");
+        assert_eq!(recent[0].raw_material_name, "Flour");
     }
 }

@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { toAppError } from "../../api/errors";
 import { listPurchaseRecordsForMaterial } from "../../api/purchaseRecords";
 import { UNIT_LABELS } from "../../api/types";
 import type { BaseUnitCode, PurchaseRecord, RawMaterial, Supplier } from "../../api/types";
 import { PurchaseRecordForm } from "./PurchaseRecordForm";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 interface RawMaterialDetailProps {
   material: RawMaterial;
@@ -56,64 +61,88 @@ export function RawMaterialDetail({
   const activeSuppliers = suppliers.filter((s) => s.is_active);
 
   return (
-    <section>
-      <button type="button" onClick={onBack}>
-        ← Back to raw materials
-      </button>
+    <section className="flex flex-col gap-6">
+      <div>
+        <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onBack}>
+          <ArrowLeft className="size-4" />
+          Back to raw materials
+        </Button>
+      </div>
 
-      <h2>{material.name}</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="font-heading text-xl font-semibold">{material.name}</h2>
+        <Badge variant={material.is_active ? "default" : "secondary"}>
+          {material.is_active ? "Active" : "Archived"}
+        </Badge>
+      </div>
 
       {justCreated && (
-        <p className="callout">
+        <div className="rounded-lg border-l-4 border-l-primary bg-muted/50 px-4 py-3 text-sm">
           "{material.name}" was created. It has no price yet — record its first purchase below to
           set one.
-        </p>
+        </div>
       )}
 
-      <dl className="detail-summary">
-        <dt>Category</dt>
-        <dd>{material.category ?? "—"}</dd>
-        <dt>Base unit</dt>
-        <dd>{unitLabel(material.base_unit_code)}</dd>
-        <dt>Status</dt>
-        <dd>{material.is_active ? "Active" : "Archived"}</dd>
-      </dl>
+      <Card>
+        <CardContent>
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
+            <dt className="font-medium text-muted-foreground">Category</dt>
+            <dd>{material.category ?? "—"}</dd>
+            <dt className="font-medium text-muted-foreground">Base unit</dt>
+            <dd>{unitLabel(material.base_unit_code)}</dd>
+          </dl>
+        </CardContent>
+      </Card>
 
-      <h3>Purchase history</h3>
-      {loadError && <p className="form-error">{loadError}</p>}
-      {loading ? (
-        <p>Loading…</p>
-      ) : history.length === 0 ? (
-        <p>No purchases recorded yet.</p>
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Supplier</th>
-              <th>Quantity</th>
-              <th>Total price</th>
-              <th>Cost per {unitLabel(material.base_unit_code)}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map((record) => (
-              <tr key={record.id}>
-                <td>{record.purchase_date}</td>
-                <td>{supplierName(record.supplier_id)}</td>
-                <td>
-                  {record.quantity} {unitLabel(record.purchase_unit_code)}
-                </td>
-                <td>€{formatMoney(record.total_price_micros, 2)}</td>
-                <td>€{formatMoney(record.cost_per_base_unit_micros, 4)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div className="flex flex-col gap-2">
+        <h3 className="font-heading text-base font-semibold">Purchase history</h3>
+        {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : history.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No purchases recorded yet.</p>
+        ) : (
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Total price</TableHead>
+                  <TableHead>Cost per {unitLabel(material.base_unit_code)}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {history.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell>{record.purchase_date}</TableCell>
+                    <TableCell>{supplierName(record.supplier_id)}</TableCell>
+                    <TableCell>
+                      {record.quantity} {unitLabel(record.purchase_unit_code)}
+                    </TableCell>
+                    <TableCell>€{formatMoney(record.total_price_micros, 2)}</TableCell>
+                    <TableCell>€{formatMoney(record.cost_per_base_unit_micros, 4)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
-      <h3>Record new purchase</h3>
-      <PurchaseRecordForm rawMaterial={material} suppliers={activeSuppliers} onCreated={refresh} />
+      <div className="flex flex-col gap-2">
+        <h3 className="font-heading text-base font-semibold">Record new purchase</h3>
+        <Card>
+          <CardContent>
+            <PurchaseRecordForm
+              rawMaterial={material}
+              suppliers={activeSuppliers}
+              onCreated={refresh}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </section>
   );
 }

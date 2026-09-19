@@ -12,6 +12,23 @@ import type {
 } from "../../api/types";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeForm } from "./RecipeForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; recipe: RecipeDetailData };
 
@@ -33,7 +50,6 @@ export function RecipesScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ mode: "closed" });
   const [rowError, setRowError] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetailData | null>(null);
 
   const refresh = useCallback(() => {
@@ -119,11 +135,9 @@ export function RecipesScreen() {
     setRowError(null);
     try {
       await recipesApi.deleteRecipe(id);
-      setConfirmDeleteId(null);
       refresh();
     } catch (err) {
       setRowError(toAppError(err).message);
-      setConfirmDeleteId(null);
     }
   }
 
@@ -144,122 +158,158 @@ export function RecipesScreen() {
   ).sort((a, b) => a.localeCompare(b));
 
   return (
-    <section>
-      <div className="screen-header">
-        <h2>Recipes</h2>
-        <div className="screen-header-actions">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="font-heading text-xl font-semibold">Recipes</h2>
+        <div className="flex items-center gap-4">
+          <Label className="flex items-center gap-2 font-normal">
+            <Checkbox
               checked={includeArchived}
-              onChange={(e) => setIncludeArchived(e.target.checked)}
+              onCheckedChange={(checked) => setIncludeArchived(checked === true)}
             />
             Show archived
-          </label>
-          <button type="button" onClick={() => setPanel({ mode: "create" })}>
+          </Label>
+          <Button type="button" onClick={() => setPanel({ mode: "create" })}>
             Add recipe
-          </button>
+          </Button>
         </div>
       </div>
 
-      {rowError && <p className="form-error">{rowError}</p>}
-      {loadError && <p className="form-error">{loadError}</p>}
+      {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
+      {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
 
       {panel.mode === "create" && (
-        <div className="panel">
-          <h3>Add recipe</h3>
-          <RecipeForm
-            categories={categories}
-            rawMaterials={rawMaterials}
-            recipeOptions={activeRecipes}
-            units={units}
-            onSubmit={handleCreate}
-            onCancel={() => setPanel({ mode: "closed" })}
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Add recipe</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RecipeForm
+              categories={categories}
+              rawMaterials={rawMaterials}
+              recipeOptions={activeRecipes}
+              units={units}
+              onSubmit={handleCreate}
+              onCancel={() => setPanel({ mode: "closed" })}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {panel.mode === "edit" && (
-        <div className="panel">
-          <h3>Edit recipe</h3>
-          <RecipeForm
-            initial={panel.recipe}
-            categories={categories}
-            rawMaterials={rawMaterials}
-            recipeOptions={activeRecipes.filter((r) => r.id !== panel.recipe.id)}
-            units={units}
-            onSubmit={(input) => handleUpdate(panel.recipe.id, input)}
-            onCancel={() => setPanel({ mode: "closed" })}
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit recipe</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RecipeForm
+              initial={panel.recipe}
+              categories={categories}
+              rawMaterials={rawMaterials}
+              recipeOptions={activeRecipes.filter((r) => r.id !== panel.recipe.id)}
+              units={units}
+              onSubmit={(input) => handleUpdate(panel.recipe.id, input)}
+              onCancel={() => setPanel({ mode: "closed" })}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {loading ? (
-        <p>Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : recipes.length === 0 ? (
-        <p>No recipes yet.</p>
+        <p className="text-sm text-muted-foreground">No recipes yet.</p>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Yield</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recipes.map((recipe) => (
-              <tr key={recipe.id}>
-                <td>
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => openDetail(recipe.id)}
-                  >
-                    {recipe.name}
-                  </button>
-                </td>
-                <td>{recipe.category ?? "—"}</td>
-                <td>
-                  {recipe.yield_quantity} {unitLabel(units, recipe.yield_unit_code)}
-                </td>
-                <td>
-                  <span className={recipe.status === "active" ? "badge-active" : "badge-inactive"}>
-                    {recipe.status === "active" ? "Active" : "Archived"}
-                  </span>
-                </td>
-                <td className="row-actions">
-                  <button type="button" onClick={() => openEdit(recipe.id)}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => handleArchiveToggle(recipe)}>
-                    {recipe.status === "active" ? "Archive" : "Reactivate"}
-                  </button>
-                  <button type="button" onClick={() => handleDuplicate(recipe.id)}>
-                    Duplicate
-                  </button>
-                  {confirmDeleteId === recipe.id ? (
-                    <>
-                      <span>Delete permanently?</span>
-                      <button type="button" onClick={() => handleDelete(recipe.id)}>
-                        Confirm
-                      </button>
-                      <button type="button" onClick={() => setConfirmDeleteId(null)}>
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => setConfirmDeleteId(recipe.id)}>
-                      Delete
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Yield</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recipes.map((recipe) => (
+                <TableRow key={recipe.id}>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0"
+                      onClick={() => openDetail(recipe.id)}
+                    >
+                      {recipe.name}
+                    </Button>
+                  </TableCell>
+                  <TableCell>{recipe.category ?? "—"}</TableCell>
+                  <TableCell>
+                    {recipe.yield_quantity} {unitLabel(units, recipe.yield_unit_code)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={recipe.status === "active" ? "default" : "secondary"}>
+                      {recipe.status === "active" ? "Active" : "Archived"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(recipe.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleArchiveToggle(recipe)}
+                      >
+                        {recipe.status === "active" ? "Archive" : "Reactivate"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDuplicate(recipe.id)}
+                      >
+                        Duplicate
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button type="button" variant="destructive" size="sm">
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete "{recipe.name}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently deletes the recipe. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => handleDelete(recipe.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );

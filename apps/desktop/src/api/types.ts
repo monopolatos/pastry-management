@@ -218,3 +218,19 @@ export interface CostSnapshotSummary {
   total_cost_micros: number;
   cost_per_yield_unit_micros: number;
 }
+
+/**
+ * `commands::purchase_records::list_recent_purchase_records` (see
+ * src-tauri/src/db/repositories/purchase_records.rs's `RecentPurchaseRecord` struct). Cross-
+ * material recent purchase activity for the dashboard's "recent price updates" feed, ordered by
+ * `created_at` (when the entry was recorded), not `purchase_date`.
+ */
+export interface RecentPurchaseRecord {
+  id: number;
+  raw_material_id: number;
+  raw_material_name: string;
+  purchase_date: string;
+  cost_per_base_unit_micros: number;
+  base_unit_code: string;
+  created_at: string;
+}

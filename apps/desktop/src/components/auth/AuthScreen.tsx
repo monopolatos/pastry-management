@@ -39,9 +39,9 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
   if (mode === "loading") {
     return (
-      <main className="container">
-        <h1>Pastry Management</h1>
-        <p>Loading…</p>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 text-center">
+        <h1 className="font-heading text-xl font-semibold">Pastry Management</h1>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </main>
     );
   }

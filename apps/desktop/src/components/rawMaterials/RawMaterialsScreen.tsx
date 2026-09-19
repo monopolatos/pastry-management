@@ -8,6 +8,23 @@ import type { BaseUnitCode, RawMaterial, RawMaterialInput, Supplier } from "../.
 import { RawMaterialDetail } from "./RawMaterialDetail";
 import { RawMaterialForm } from "./RawMaterialForm";
 import type { InitialPurchaseInput } from "./RawMaterialForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
 
@@ -23,7 +40,6 @@ export function RawMaterialsScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ mode: "closed" });
   const [rowError, setRowError] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
   const [justCreated, setJustCreated] = useState(false);
 
@@ -93,11 +109,9 @@ export function RawMaterialsScreen() {
     setRowError(null);
     try {
       await rawMaterialsApi.deleteRawMaterial(id);
-      setConfirmDeleteId(null);
       refresh();
     } catch (err) {
       setRowError(toAppError(err).message);
-      setConfirmDeleteId(null);
     }
   }
 
@@ -122,113 +136,144 @@ export function RawMaterialsScreen() {
   ).sort((a, b) => a.localeCompare(b));
 
   return (
-    <section>
-      <div className="screen-header">
-        <h2>Raw Materials</h2>
-        <div className="screen-header-actions">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="font-heading text-xl font-semibold">Raw Materials</h2>
+        <div className="flex items-center gap-4">
+          <Label className="flex items-center gap-2 font-normal">
+            <Checkbox
               checked={includeInactive}
-              onChange={(e) => setIncludeInactive(e.target.checked)}
+              onCheckedChange={(checked) => setIncludeInactive(checked === true)}
             />
             Show inactive
-          </label>
-          <button type="button" onClick={() => setPanel({ mode: "create" })}>
+          </Label>
+          <Button type="button" onClick={() => setPanel({ mode: "create" })}>
             Add raw material
-          </button>
+          </Button>
         </div>
       </div>
 
-      {rowError && <p className="form-error">{rowError}</p>}
-      {loadError && <p className="form-error">{loadError}</p>}
+      {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
+      {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
 
       {panel.mode === "create" && (
-        <div className="panel">
-          <h3>Add raw material</h3>
-          <RawMaterialForm
-            suppliers={activeSuppliers}
-            categories={categories}
-            onSubmit={handleCreate}
-            onCancel={() => setPanel({ mode: "closed" })}
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Add raw material</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RawMaterialForm
+              suppliers={activeSuppliers}
+              categories={categories}
+              onSubmit={handleCreate}
+              onCancel={() => setPanel({ mode: "closed" })}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {panel.mode === "edit" && (
-        <div className="panel">
-          <h3>Edit raw material</h3>
-          <RawMaterialForm
-            initial={panel.material}
-            suppliers={activeSuppliers}
-            categories={categories}
-            onSubmit={(input) => handleUpdate(panel.material.id, input)}
-            onCancel={() => setPanel({ mode: "closed" })}
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit raw material</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RawMaterialForm
+              initial={panel.material}
+              suppliers={activeSuppliers}
+              categories={categories}
+              onSubmit={(input) => handleUpdate(panel.material.id, input)}
+              onCancel={() => setPanel({ mode: "closed" })}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {loading ? (
-        <p>Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : materials.length === 0 ? (
-        <p>No raw materials yet.</p>
+        <p className="text-sm text-muted-foreground">No raw materials yet.</p>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Base unit</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {materials.map((material) => (
-              <tr key={material.id}>
-                <td>
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => setSelectedMaterial(material)}
-                  >
-                    {material.name}
-                  </button>
-                </td>
-                <td>{material.category ?? "—"}</td>
-                <td>{unitLabel(material.base_unit_code)}</td>
-                <td>
-                  <span className={material.is_active ? "badge-active" : "badge-inactive"}>
-                    {material.is_active ? "Active" : "Archived"}
-                  </span>
-                </td>
-                <td className="row-actions">
-                  <button type="button" onClick={() => setPanel({ mode: "edit", material })}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => handleArchiveToggle(material)}>
-                    {material.is_active ? "Archive" : "Reactivate"}
-                  </button>
-                  {confirmDeleteId === material.id ? (
-                    <>
-                      <span>Delete permanently?</span>
-                      <button type="button" onClick={() => handleDelete(material.id)}>
-                        Confirm
-                      </button>
-                      <button type="button" onClick={() => setConfirmDeleteId(null)}>
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => setConfirmDeleteId(material.id)}>
-                      Delete
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Base unit</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {materials.map((material) => (
+                <TableRow key={material.id}>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0"
+                      onClick={() => setSelectedMaterial(material)}
+                    >
+                      {material.name}
+                    </Button>
+                  </TableCell>
+                  <TableCell>{material.category ?? "—"}</TableCell>
+                  <TableCell>{unitLabel(material.base_unit_code)}</TableCell>
+                  <TableCell>
+                    <Badge variant={material.is_active ? "default" : "secondary"}>
+                      {material.is_active ? "Active" : "Archived"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPanel({ mode: "edit", material })}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleArchiveToggle(material)}
+                      >
+                        {material.is_active ? "Archive" : "Reactivate"}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button type="button" variant="destructive" size="sm">
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete "{material.name}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently deletes the raw material. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => handleDelete(material.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );

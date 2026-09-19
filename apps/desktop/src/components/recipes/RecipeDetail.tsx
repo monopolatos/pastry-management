@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ArchivedReferenceError,
-  CircularDependencyError,
-  ExcessiveNestingError,
-  IncompatibleUnitError,
-  InvalidYieldError,
-  MissingIngredientCostError,
-  UnknownUnitError,
-  calculateRecipeCost,
-} from "@pastry-management/core";
+import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostBreakdown, RecipeCostingGraph } from "@pastry-management/core";
+import { toast } from "sonner";
 import { toAppError } from "../../api/errors";
 import * as recipesApi from "../../api/recipes";
 import type { CostSnapshotSummary, RecipeDetail as RecipeDetailData } from "../../api/types";
+import { describeCostingError } from "../../lib/costingErrors";
 import { RecipeCostBreakdown } from "./RecipeCostBreakdown";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { ArrowLeft } from "lucide-react";
 
 interface RecipeDetailProps {
   recipe: RecipeDetailData;
@@ -27,27 +25,6 @@ function formatMoney(micros: number, digits = 2): string {
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-}
-
-/**
- * Translates the costing engine's 7 typed error classes (see packages/core/src/costing/errors.ts)
- * into their already-descriptive `.message` (e.g. CircularDependencyError names the exact cycle
- * path), and falls back to the app's usual `{ message, field }` rejection shape for errors thrown
- * by the `get_recipe_costing_graph` Tauri call itself.
- */
-function describeCostingError(err: unknown): string {
-  if (
-    err instanceof CircularDependencyError ||
-    err instanceof MissingIngredientCostError ||
-    err instanceof ArchivedReferenceError ||
-    err instanceof ExcessiveNestingError ||
-    err instanceof InvalidYieldError ||
-    err instanceof IncompatibleUnitError ||
-    err instanceof UnknownUnitError
-  ) {
-    return err.message;
-  }
-  return toAppError(err).message;
 }
 
 /**
@@ -72,12 +49,10 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const calculateCost = useCallback(() => {
     setCostLoading(true);
     setCostError(null);
-    setSaveSuccess(false);
     recipesApi
       .getRecipeCostingGraph(recipe.id)
       .then((fetchedGraph) => {
@@ -118,7 +93,6 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     if (!breakdown) return;
     setSaving(true);
     setSaveError(null);
-    setSaveSuccess(false);
     try {
       await recipesApi.saveRecipeCostSnapshot(
         recipe.id,
@@ -127,7 +101,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         breakdown.costPerYieldUnitMicros,
         JSON.stringify(breakdown),
       );
-      setSaveSuccess(true);
+      toast.success("Cost snapshot saved.");
       refreshSnapshots();
     } catch (err) {
       setSaveError(toAppError(err).message);
@@ -137,136 +111,163 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   }
 
   return (
-    <section>
-      <button type="button" onClick={onBack}>
-        ← Back to recipes
-      </button>
-
-      <h2>{recipe.name}</h2>
-
-      <dl className="detail-summary">
-        <dt>Category</dt>
-        <dd>{recipe.category ?? "—"}</dd>
-        <dt>Status</dt>
-        <dd>
-          <span className={recipe.status === "active" ? "badge-active" : "badge-inactive"}>
-            {recipe.status === "active" ? "Active" : "Archived"}
-          </span>
-        </dd>
-        <dt>Yield</dt>
-        <dd>
-          {recipe.yield_quantity} {recipe.yield_unit_code}
-        </dd>
-        <dt>Prep time</dt>
-        <dd>{recipe.prep_time_minutes != null ? `${recipe.prep_time_minutes} min` : "—"}</dd>
-        <dt>Cook time</dt>
-        <dd>{recipe.cook_time_minutes != null ? `${recipe.cook_time_minutes} min` : "—"}</dd>
-      </dl>
-
-      {recipe.description && (
-        <>
-          <h3>Description</h3>
-          <p>{recipe.description}</p>
-        </>
-      )}
-
-      {recipe.instructions && (
-        <>
-          <h3>Instructions</h3>
-          <p className="pre-wrap">{recipe.instructions}</p>
-        </>
-      )}
-
-      {recipe.notes && (
-        <>
-          <h3>Notes</h3>
-          <p>{recipe.notes}</p>
-        </>
-      )}
-
-      <h3>Ingredients</h3>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Quantity</th>
-            <th>Unit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recipe.ingredients.map((ing) => (
-            <tr key={ing.id}>
-              <td>{ing.ingredient_name}</td>
-              <td>{ing.quantity}</td>
-              <td>{ing.unit_code}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <h3>Cost Breakdown</h3>
-      <div className="form-actions">
-        <button type="button" onClick={calculateCost} disabled={costLoading}>
-          {costLoading ? "Calculating…" : "Recalculate cost"}
-        </button>
+    <section className="flex flex-col gap-6">
+      <div>
+        <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onBack}>
+          <ArrowLeft className="size-4" />
+          Back to recipes
+        </Button>
       </div>
 
-      {costLoading && <p>Calculating cost…</p>}
-      {costError && <p className="form-error">{costError}</p>}
+      <div className="flex items-center gap-3">
+        <h2 className="font-heading text-xl font-semibold">{recipe.name}</h2>
+        <Badge variant={recipe.status === "active" ? "default" : "secondary"}>
+          {recipe.status === "active" ? "Active" : "Archived"}
+        </Badge>
+      </div>
 
-      {!costLoading && !costError && breakdown && (
-        <>
-          <RecipeCostBreakdown breakdown={breakdown} />
+      <Card>
+        <CardContent>
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
+            <dt className="font-medium text-muted-foreground">Category</dt>
+            <dd>{recipe.category ?? "—"}</dd>
+            <dt className="font-medium text-muted-foreground">Yield</dt>
+            <dd>
+              {recipe.yield_quantity} {recipe.yield_unit_code}
+            </dd>
+            <dt className="font-medium text-muted-foreground">Prep time</dt>
+            <dd>{recipe.prep_time_minutes != null ? `${recipe.prep_time_minutes} min` : "—"}</dd>
+            <dt className="font-medium text-muted-foreground">Cook time</dt>
+            <dd>{recipe.cook_time_minutes != null ? `${recipe.cook_time_minutes} min` : "—"}</dd>
+          </dl>
 
-          <h4>Prices used</h4>
-          <ul>
-            {breakdown.pricingStrategyUsed.map((entry) => (
-              <li key={entry.rawMaterialId}>
-                {entry.rawMaterialName}: €{formatMoney(entry.costPerBaseUnitMicros, 4)}/
-                {rawMaterialBaseUnit(entry.rawMaterialId)} ({entry.sourceDescription})
-              </li>
-            ))}
-          </ul>
+          {recipe.description && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold">Description</h3>
+              <p className="text-sm text-muted-foreground">{recipe.description}</p>
+            </div>
+          )}
 
-          <p className="hint">Calculated at {formatDateTime(breakdown.calculatedAt)}</p>
+          {recipe.instructions && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold">Instructions</h3>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {recipe.instructions}
+              </p>
+            </div>
+          )}
 
-          <div className="form-actions">
-            <button type="button" onClick={handleSaveCost} disabled={saving}>
-              {saving ? "Saving…" : "Save this cost"}
-            </button>
+          {recipe.notes && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold">Notes</h3>
+              <p className="text-sm text-muted-foreground">{recipe.notes}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="font-heading text-base font-semibold">Ingredients</h3>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Unit</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recipe.ingredients.map((ing) => (
+                <TableRow key={ing.id}>
+                  <TableCell>{ing.ingredient_name}</TableCell>
+                  <TableCell>{ing.quantity}</TableCell>
+                  <TableCell>{ing.unit_code}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="font-heading text-base font-semibold">Cost Breakdown</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={calculateCost}
+            disabled={costLoading}
+          >
+            {costLoading ? "Calculating…" : "Recalculate cost"}
+          </Button>
+        </div>
+
+        {costLoading && <p className="text-sm text-muted-foreground">Calculating cost…</p>}
+        {costError && <p className="text-sm font-medium text-destructive">{costError}</p>}
+
+        {!costLoading && !costError && breakdown && (
+          <>
+            <RecipeCostBreakdown breakdown={breakdown} />
+
+            <div>
+              <h4 className="text-sm font-semibold">Prices used</h4>
+              <ul className="mt-1 flex flex-col gap-0.5 text-sm text-muted-foreground">
+                {breakdown.pricingStrategyUsed.map((entry) => (
+                  <li key={entry.rawMaterialId}>
+                    {entry.rawMaterialName}: €{formatMoney(entry.costPerBaseUnitMicros, 4)}/
+                    {rawMaterialBaseUnit(entry.rawMaterialId)} ({entry.sourceDescription})
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Calculated at {formatDateTime(breakdown.calculatedAt)}
+            </p>
+
+            <div>
+              <Button type="button" onClick={handleSaveCost} disabled={saving}>
+                {saving ? "Saving…" : "Save this cost"}
+              </Button>
+            </div>
+            {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
+          </>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="font-heading text-base font-semibold">Cost History</h3>
+        {snapshotsLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : snapshotsError ? (
+          <p className="text-sm font-medium text-destructive">{snapshotsError}</p>
+        ) : snapshots.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cost snapshots saved yet.</p>
+        ) : (
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Total cost</TableHead>
+                  <TableHead>Cost per yield unit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {snapshots.map((snap) => (
+                  <TableRow key={snap.id}>
+                    <TableCell>{formatDateTime(snap.calculated_at)}</TableCell>
+                    <TableCell>€{formatMoney(snap.total_cost_micros)}</TableCell>
+                    <TableCell>€{formatMoney(snap.cost_per_yield_unit_micros, 4)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          {saveError && <p className="form-error">{saveError}</p>}
-          {saveSuccess && <p className="form-info">Cost snapshot saved.</p>}
-        </>
-      )}
-
-      <h3>Cost History</h3>
-      {snapshotsLoading ? (
-        <p>Loading…</p>
-      ) : snapshotsError ? (
-        <p className="form-error">{snapshotsError}</p>
-      ) : snapshots.length === 0 ? (
-        <p>No cost snapshots saved yet.</p>
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Total cost</th>
-              <th>Cost per yield unit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {snapshots.map((snap) => (
-              <tr key={snap.id}>
-                <td>{formatDateTime(snap.calculated_at)}</td>
-                <td>€{formatMoney(snap.total_cost_micros)}</td>
-                <td>€{formatMoney(snap.cost_per_yield_unit_micros, 4)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+        )}
+      </div>
     </section>
   );
 }
