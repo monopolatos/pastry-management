@@ -351,3 +351,17 @@ textarea {
 .detail-summary dd {
   margin: 0;
 }
+
+.nested-breakdown {
+  margin-top: 0.75em;
+}
+
+.nested-breakdown-body {
+  margin-left: 1.5em;
+  padding-left: 1em;
+  border-left: 2px solid rgba(128, 128, 128, 0.3);
+}
+
+.pre-wrap {
+  white-space: pre-wrap;
+}

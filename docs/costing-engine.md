@@ -1,6 +1,6 @@
-# Recipe Costing Engine (Phase 1 Design)
+# Recipe Costing Engine
 
-Lives entirely in `packages/core/costing` — pure TypeScript, no I/O, fully unit-testable in isolation from the database/UI.
+Originally a Phase 1 design proposal; **implemented in Phase 4** in `packages/core/src/costing` (with `packages/core/src/units` and `packages/core/src/pricing` as supporting modules), pure TypeScript, no I/O, 54 passing Vitest tests. See §6 for where the implementation's exact interface and a few judgment calls differ from this doc's original sketch.
 
 ## 1. Inputs / Outputs
 
@@ -75,3 +75,17 @@ matches requirement §12.4's worked example exactly.
 ## 5. Edge Cases Covered by Design (and by the Test Engineer's suite)
 
 Zero/negative yield, missing yield, unknown/incompatible units, missing ingredient cost, circular references (direct and multi-level), self-reference, archived sub-recipe reference, deleted sub-recipe reference, excessive nesting depth, empty ingredient list, duplicate sub-recipe used at multiple levels (memoization correctness), monetary rounding at display boundaries (round-half-even at the final display step only, never mid-calculation).
+
+## 6. Implementation Notes (Phase 4)
+
+The shipped interface is data-driven and snake_case, matching the Rust backend's serialized output field-for-field (`RecipeCostingGraph`, `CostingRecipeNode`, `CostingIngredient`, `CostingRawMaterial`, `CostingPurchaseRecord`, `CostingUnit` — see `apps/desktop/src-tauri/src/db/repositories/recipes.rs`) rather than the illustrative camelCase `Map`-based sketch in §1. This was a deliberate simplification made during implementation: the engine builds its own internal lookup maps from the flat arrays Rust naturally produces, so the Tauri command → frontend → engine path needs zero field-mapping glue. `packages/core/src/costing/types.ts` is the authoritative type definition.
+
+Money/percentage fields on the _output_ (`CostBreakdown`, `CostLine`, `PricingStrategyUsedEntry`) are plain `number`s, not `Decimal`, rounded to the nearest whole integer micro exactly once at output construction — all arithmetic leading up to that point uses `decimal.js` at full precision (verified by a dedicated test using a repeating-decimal average). This keeps the public contract trivially JSON-serializable across the Tauri boundary and consistent with how every other part of the app already handles money (plain integer micros).
+
+Judgment calls made where this doc was ambiguous:
+
+- **Empty ingredient list**: the engine treats this as a valid, zero-cost recipe rather than an error. The Rust CRUD layer separately rejects empty ingredient lists at write time (see `docs/database-schema.md`), but the engine itself doesn't assume that's the only path data can reach it through.
+- **A `sub_recipe_id` that doesn't exist in the supplied graph at all** (vs. one that exists but is archived) reuses `ArchivedReferenceError` rather than a new error class — both mean "this reference cannot be used as a live ingredient"; the message text distinguishes "does not exist" from "is archived."
+- **Cycle detection vs. memoization are separate mechanisms**, not one: a `Set` of recipe ids currently being expanded on the current path (cleared via `finally` on the way back out) catches true cycles, while a separate `Map` of finished breakdowns handles legitimate diamond-shaped reuse (the same sub-recipe used twice at different points in one calculation) without recomputing or false-flagging it as a cycle.
+- **Nesting depth** is only counted on a fresh computation; reusing an already-memoized breakdown doesn't re-check depth at the reuse site.
+- The worked example in §4 has an internal inconsistency in the original doc text (chocolate/cream/butter cost-per-gram figures given in €, not micros, so the "€0.0067/g" cream figure doesn't reduce to a round total) — the actual test fixture in `packages/core/src/costing/engine.test.ts` uses exact `cost_per_base_unit_micros` integers chosen so the Chocolate Cake total reproduces the doc's own stated **€5.05 total / €0.505 per piece exactly** (`totalCostMicros: 5_050_000`, `costPerYieldUnitMicros: 505_000`), which is the number that actually matters for the acceptance criterion in `docs/roadmap.md`.

@@ -132,3 +132,89 @@ export const PRICING_STRATEGY_LABELS: Record<PricingStrategy, string> = {
   average_n: "Average of last N purchases",
   manual: "Manual override",
 };
+
+/**
+ * `commands::measurement_units::list_measurement_units` (see src-tauri/src/db/repositories/
+ * measurement_units.rs). Unlike the raw-materials screen above (which predates this command and
+ * hardcodes BASE_UNIT_CODES), the recipe screens fetch this list live — see
+ * components/recipes/RecipesScreen.tsx for the rationale.
+ */
+export interface MeasurementUnit {
+  code: string;
+  kind: string;
+  base_unit_code: string;
+  to_base_factor: number;
+}
+
+export type RecipeStatus = "active" | "archived";
+
+export type IngredientType = "raw_material" | "recipe";
+
+export interface RecipeSummary {
+  id: number;
+  name: string;
+  category: string | null;
+  status: RecipeStatus;
+  version_number: number;
+  yield_quantity: number;
+  yield_unit_code: string;
+  updated_at: string;
+}
+
+export interface RecipeIngredient {
+  id: number;
+  ingredient_type: IngredientType;
+  raw_material_id: number | null;
+  sub_recipe_id: number | null;
+  /** Denormalized for display convenience — the raw material's or sub-recipe's current name. */
+  ingredient_name: string;
+  quantity: number;
+  unit_code: string;
+  sort_order: number;
+}
+
+export interface RecipeDetail {
+  id: number;
+  name: string;
+  description: string | null;
+  category: string | null;
+  instructions: string | null;
+  prep_time_minutes: number | null;
+  cook_time_minutes: number | null;
+  status: RecipeStatus;
+  notes: string | null;
+  version_number: number;
+  yield_quantity: number;
+  yield_unit_code: string;
+  ingredients: RecipeIngredient[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecipeIngredientInput {
+  ingredient_type: IngredientType;
+  raw_material_id: number | null;
+  sub_recipe_id: number | null;
+  quantity: number;
+  unit_code: string;
+}
+
+export interface RecipeInput {
+  name: string;
+  description: string | null;
+  category: string | null;
+  instructions: string | null;
+  prep_time_minutes: number | null;
+  cook_time_minutes: number | null;
+  notes: string | null;
+  yield_quantity: number;
+  yield_unit_code: string;
+  ingredients: RecipeIngredientInput[];
+}
+
+export interface CostSnapshotSummary {
+  id: number;
+  calculated_at: string;
+  total_cost_micros: number;
+  cost_per_yield_unit_micros: number;
+}

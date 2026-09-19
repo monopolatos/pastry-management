@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import * as authApi from "./api/auth";
 import { AuthScreen } from "./components/auth/AuthScreen";
 import { RawMaterialsScreen } from "./components/rawMaterials/RawMaterialsScreen";
+import { RecipesScreen } from "./components/recipes/RecipesScreen";
 import { SuppliersScreen } from "./components/suppliers/SuppliersScreen";
 import { UsersSection } from "./components/users/UsersSection";
 import type { SessionInfo } from "./api/types";
 import "./App.css";
 
-type Tab = "raw-materials" | "suppliers" | "users";
+type Tab = "recipes" | "raw-materials" | "suppliers" | "users";
 
 /**
  * Top-level app shell. Session state lives here in plain React state and nowhere else — the Rust
@@ -79,6 +80,13 @@ function App() {
         >
           Suppliers
         </button>
+        <button
+          type="button"
+          className={activeTab === "recipes" ? "nav-tab active" : "nav-tab"}
+          onClick={() => setActiveTab("recipes")}
+        >
+          Recipes
+        </button>
         {canManageUsers && (
           <button
             type="button"
@@ -93,6 +101,7 @@ function App() {
       <main className="app-main">
         {activeTab === "raw-materials" && <RawMaterialsScreen />}
         {activeTab === "suppliers" && <SuppliersScreen />}
+        {activeTab === "recipes" && <RecipesScreen />}
         {activeTab === "users" && canManageUsers && <UsersSection />}
       </main>
     </div>

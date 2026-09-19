@@ -75,12 +75,16 @@ recipes
   created_at, updated_at TEXT
 
 recipe_versions                        -- edits create a new version; nothing is destructively overwritten
+                                        -- (Phase 4 refinement: only versions the fields that affect
+                                        -- a cost calculation — yield + recipe_ingredients below.
+                                        -- name/description/instructions/category/notes live only on
+                                        -- `recipes` and are edited in place, since versioning exists
+                                        -- for cost-audit integrity, not prose history.)
   id INTEGER PK
   recipe_id INTEGER NOT NULL REFERENCES recipes(id)
   version_number INTEGER NOT NULL
   yield_quantity REAL NOT NULL
   yield_unit_code TEXT NOT NULL REFERENCES measurement_units(code)
-  instructions TEXT
   created_at TEXT
   created_by_user_id INTEGER REFERENCES users(id)
   UNIQUE (recipe_id, version_number)

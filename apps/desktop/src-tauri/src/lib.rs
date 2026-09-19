@@ -71,6 +71,18 @@ pub fn run() {
             commands::raw_materials::delete_raw_material,
             commands::purchase_records::list_purchase_records_for_material,
             commands::purchase_records::create_purchase_record,
+            commands::measurement_units::list_measurement_units,
+            commands::recipes::list_recipes,
+            commands::recipes::get_recipe,
+            commands::recipes::create_recipe,
+            commands::recipes::update_recipe,
+            commands::recipes::archive_recipe,
+            commands::recipes::reactivate_recipe,
+            commands::recipes::delete_recipe,
+            commands::recipes::duplicate_recipe,
+            commands::recipes::get_recipe_costing_graph,
+            commands::recipes::save_recipe_cost_snapshot,
+            commands::recipes::list_recipe_cost_snapshots,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
