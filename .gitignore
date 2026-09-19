@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+dist-ssr/
+build/
+*.local
+
+# Rust / Tauri
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+Cargo.lock.bak
+
+# Tauri updater signing keys — NEVER commit these
+*.key
+*.pem
+tauri-signing-key*
+*.key.pub.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# App runtime data (never commit real user databases/backups)
+*.sqlite
+*.sqlite3
+*.db
+/data/
+/backups/
+*.zip
+
+# Test / coverage
+coverage/
+.vitest-cache/
+
+# Rust
+target/
+**/*.rs.bk

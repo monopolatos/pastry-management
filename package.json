@@ -1,0 +1,34 @@
+{
+  "name": "pastry-management",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cross-platform desktop application for pastry shop and bakery management",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm --filter @pastry-management/desktop dev",
+    "tauri": "pnpm --filter @pastry-management/desktop tauri",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.13.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.6.2"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

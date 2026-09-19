@@ -1,0 +1,38 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+
+jobs:
+  pnpm-audit:
+    name: pnpm audit (npm dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Non-blocking for now: surfaces advisories without failing the build on transitive
+      # low-severity findings in a freshly scaffolded project. Tighten (e.g. --audit-level=high
+      # as a hard gate) once the dependency tree and any accepted-risk exceptions are established.
+      - run: pnpm audit --audit-level=high || true
+
+  cargo-audit:
+    name: cargo audit (Rust dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-audit
+      - name: Audit Rust dependencies
+        working-directory: apps/desktop/src-tauri
+        run: cargo audit

@@ -1,0 +1,21 @@
+{
+  "name": "@pastry-management/core",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Framework-agnostic domain logic: recipe costing engine, unit conversion, pricing strategy resolution. No I/O, no UI, no Tauri.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.3"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.2",
+    "vitest": "^2.1.8"
+  }
+}
