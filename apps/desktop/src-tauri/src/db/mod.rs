@@ -5,6 +5,8 @@
 //! `crate::commands`, which in turn call into repository functions that use this module's
 //! connection. See docs/architecture.md and docs/database-schema.md for the rationale.
 
+pub mod repositories;
+
 use std::path::Path;
 
 use rusqlite::Connection;
@@ -12,7 +14,14 @@ use thiserror::Error;
 
 /// One migration file embedded at compile time, applied in ascending `version` order.
 /// Each `(version, name, sql)` tuple corresponds to a file in `migrations/`.
-const MIGRATIONS: &[(i64, &str, &str)] = &[(1, "init", include_str!("../../migrations/0001_init.sql"))];
+const MIGRATIONS: &[(i64, &str, &str)] = &[
+    (1, "init", include_str!("../../migrations/0001_init.sql")),
+    (
+        2,
+        "core_data",
+        include_str!("../../migrations/0002_core_data.sql"),
+    ),
+];
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -92,9 +101,11 @@ fn check_not_ahead_of_app(conn: &Connection) -> Result<(), DbError> {
     }
 
     let db_version: i64 = conn
-        .query_row("SELECT COALESCE(MAX(version), 0) FROM schema_migrations", [], |row| {
-            row.get(0)
-        })
+        .query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+            [],
+            |row| row.get(0),
+        )
         .unwrap_or(0);
 
     let app_version = MIGRATIONS.iter().map(|(v, _, _)| *v).max().unwrap_or(0);
@@ -120,9 +131,11 @@ fn apply_pending_migrations(conn: &Connection) -> Result<(), DbError> {
         > 0;
 
     let applied_max: i64 = if table_exists {
-        conn.query_row("SELECT COALESCE(MAX(version), 0) FROM schema_migrations", [], |row| {
-            row.get(0)
-        })
+        conn.query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+            [],
+            |row| row.get(0),
+        )
         .unwrap_or(0)
     } else {
         0
@@ -133,18 +146,19 @@ fn apply_pending_migrations(conn: &Connection) -> Result<(), DbError> {
             continue;
         }
 
-        conn.execute_batch(&format!("BEGIN; {sql}\nCOMMIT;")).map_err(|source| {
-            // BEGIN without a matching COMMIT on failure could leave a transaction open;
-            // rusqlite's execute_batch runs statements sequentially, so on error the connection's
-            // implicit rollback-on-drop-of-uncommitted-transaction does not apply here — issue an
-            // explicit rollback to guarantee the partially-applied migration is undone.
-            let _ = conn.execute_batch("ROLLBACK;");
-            DbError::Migration {
-                version: *version,
-                name: name.to_string(),
-                source,
-            }
-        })?;
+        conn.execute_batch(&format!("BEGIN; {sql}\nCOMMIT;"))
+            .map_err(|source| {
+                // BEGIN without a matching COMMIT on failure could leave a transaction open;
+                // rusqlite's execute_batch runs statements sequentially, so on error the connection's
+                // implicit rollback-on-drop-of-uncommitted-transaction does not apply here — issue an
+                // explicit rollback to guarantee the partially-applied migration is undone.
+                let _ = conn.execute_batch("ROLLBACK;");
+                DbError::Migration {
+                    version: *version,
+                    name: name.to_string(),
+                    source,
+                }
+            })?;
 
         // The migration itself doesn't insert its own bookkeeping row (it may be creating the
         // schema_migrations table for the first time), so record it here, in the same logical
@@ -170,7 +184,10 @@ mod tests {
 
     fn temp_db_path(name: &str) -> std::path::PathBuf {
         let mut path = std::env::temp_dir();
-        path.push(format!("pastry_management_test_{name}_{}.sqlite", std::process::id()));
+        path.push(format!(
+            "pastry_management_test_{name}_{}.sqlite",
+            std::process::id()
+        ));
         let _ = fs::remove_file(&path);
         path
     }
@@ -181,14 +198,18 @@ mod tests {
         let conn = open_and_migrate(&path).expect("migration should succeed");
 
         let unit_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM measurement_units", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM measurement_units", [], |row| {
+                row.get(0)
+            })
             .unwrap();
         assert_eq!(unit_count, 5);
 
         let applied: i64 = conn
-            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
             .unwrap();
-        assert_eq!(applied, 1);
+        assert_eq!(applied, 2);
 
         drop(conn);
         let _ = fs::remove_file(&path);
@@ -200,12 +221,15 @@ mod tests {
         {
             let _conn = open_and_migrate(&path).expect("first open should succeed");
         }
-        let conn = open_and_migrate(&path).expect("second open should also succeed, applying nothing new");
+        let conn =
+            open_and_migrate(&path).expect("second open should also succeed, applying nothing new");
 
         let applied: i64 = conn
-            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
             .unwrap();
-        assert_eq!(applied, 1, "migration should not be re-applied");
+        assert_eq!(applied, 2, "migrations should not be re-applied");
 
         drop(conn);
         let _ = fs::remove_file(&path);

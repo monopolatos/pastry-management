@@ -46,7 +46,7 @@ raw_materials
 purchase_records                     -- append-only price history, never overwritten
   id INTEGER PK
   raw_material_id INTEGER NOT NULL REFERENCES raw_materials(id)
-  supplier_id INTEGER NOT NULL REFERENCES suppliers(id)
+  supplier_id INTEGER REFERENCES suppliers(id)  -- nullable: a cash/market purchase may have no formal supplier record
   purchase_date TEXT NOT NULL
   quantity REAL NOT NULL CHECK (quantity > 0)
   purchase_unit_code TEXT NOT NULL REFERENCES measurement_units(code)
