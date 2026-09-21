@@ -75,6 +75,13 @@ jobs:
           - platform: windows-latest
             args: ""
     runs-on: ${{ matrix.platform }}
+    env:
+      # `secrets` isn't a recognized context inside `if:` expressions (GitHub Actions rejects it
+      # with "Unrecognized named-value: 'secrets'" at workflow-parse time) — only `env`/`with` can
+      # reference it. Surfacing presence as job-level env booleans here lets the steps below gate
+      # on `env.HAS_*_SIGNING == 'true'` instead.
+      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_WINDOWS_SIGNING: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -122,7 +129,7 @@ jobs:
       # trying to import an empty blob into the keychain. Setting them via $GITHUB_ENV only inside
       # a conditional step means they're genuinely absent, not just empty, when unconfigured.
       - name: Configure optional Apple code-signing env
-        if: matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        if: matrix.platform == 'macos-latest' && env.HAS_APPLE_SIGNING == 'true'
         run: |
           echo "APPLE_CERTIFICATE=${{ secrets.APPLE_CERTIFICATE }}" >> "$GITHUB_ENV"
           echo "APPLE_CERTIFICATE_PASSWORD=${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" >> "$GITHUB_ENV"
@@ -132,7 +139,7 @@ jobs:
           echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> "$GITHUB_ENV"
 
       - name: Configure optional Windows code-signing env
-        if: matrix.platform == 'windows-latest' && secrets.WINDOWS_CERTIFICATE != ''
+        if: matrix.platform == 'windows-latest' && env.HAS_WINDOWS_SIGNING == 'true'
         run: |
           echo "WINDOWS_CERTIFICATE=${{ secrets.WINDOWS_CERTIFICATE }}" >> "$env:GITHUB_ENV"
           echo "WINDOWS_CERTIFICATE_PASSWORD=${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}" >> "$env:GITHUB_ENV"
