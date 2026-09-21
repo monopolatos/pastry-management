@@ -4,12 +4,13 @@ A cross-platform desktop application for pastry shops and bakeries: raw material
 purchase price history, recipes with nested sub-recipes, automatic recipe costing, local and cloud
 backups, and self-updating releases.
 
-**Status:** Phases 2-8 of the roadmap are done (core data, costing engine, UI, local backup, Dropbox
-cloud backup, and a working CI/CD release pipeline verified end-to-end on GitHub Actions). Phase 9
-(auto-updates) is next. See [`docs/roadmap.md`](docs/roadmap.md) for the full phase-by-phase status,
-including the honest gaps (e.g. Windows/macOS installers built in CI but not yet manually verified
-installing and launching, since development so far has been Linux-only). Sections below describe the
-target design; anything not yet implemented is marked as such.
+**Status:** All 10 roadmap phases are done — core data, costing engine, UI, local backup, Dropbox
+cloud backup, a working CI/CD release pipeline verified end-to-end on GitHub Actions, automatic
+updates, and a final security/validation pass. See [`docs/roadmap.md`](docs/roadmap.md) for the
+full phase-by-phase status and [`docs/final-report.md`](docs/final-report.md) for the consolidated
+security review and known gaps (e.g. Windows/macOS installers built in CI but not yet manually
+verified installing and launching, since development so far has been Linux-only). Sections below
+describe the target design; anything not yet implemented is marked as such.
 
 ## 1. Purpose
 
@@ -114,15 +115,14 @@ downloadable workflow artifacts and never touches GitHub Releases.
 Code signing (Apple notarization, Windows Authenticode) is opt-in via GitHub Actions secrets — see
 §13 and the comments at the top of `release.yml` for the exact secret names. Without them,
 installers build successfully but are unsigned (OS security warnings on first run). Update-package
-signing (Tauri's own Ed25519 updater signature) is separate and lands with the updater itself in
-Phase 9.
+signing (Tauri's own Ed25519 updater signature) is a separate keypair from OS code signing — see
+§12.
 
 ## 10. Backup Configuration
 
 Local backups (create, restore, custom storage location) and Dropbox cloud backup — see
 [`docs/backup-and-updates.md`](docs/backup-and-updates.md) for the full design, restore-safety
-sequence, and exactly what is/isn't included in a backup file. **Not yet implemented** — tracked
-in Phases 6-7.
+sequence, and exactly what is/isn't included in a backup file.
 
 ## 11. Cloud Integration Configuration
 
@@ -136,7 +136,14 @@ unimplemented pending a verified Google Cloud OAuth consent screen — see `docs
 
 ## 12. Automatic Updates
 
-Design: `docs/backup-and-updates.md` §3. **Not yet implemented** — tracked in Phase 9.
+`tauri-plugin-updater` checks a `latest.json` manifest published alongside each GitHub Release,
+verifying an Ed25519 signature before installing anything — see `docs/backup-and-updates.md` §3
+and §3a for the full design and implementation notes. Settings → Updates has three independently
+toggleable settings (auto-check, auto-download, auto-install); restarting into an installed update
+is always a separate, explicit action, never automatic. Requires the `TAURI_SIGNING_PRIVATE_KEY` /
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub Actions secrets to be configured before a release
+publishes signed updater artifacts — without them, installers still build, they just won't be
+detected as updates by earlier versions.
 
 ## 13. Security Considerations
 

@@ -19,10 +19,13 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Non-blocking for now: surfaces advisories without failing the build on transitive
-      # low-severity findings in a freshly scaffolded project. Tighten (e.g. --audit-level=high
-      # as a hard gate) once the dependency tree and any accepted-risk exceptions are established.
-      - run: pnpm audit --audit-level=high || true
+      # Hard gate (Phase 10): the tree was verified clean of known vulnerabilities as of the
+      # vitest 2->4 bump that resolved the only findings that existed (all in packages/core's
+      # vitest/vite/esbuild devDependency chain — dev-server-only issues, never shipped in the
+      # built app). --audit-level=high fails the build on any new high/critical advisory; if a
+      # future finding is a genuine false-positive/accepted risk, add it to a documented ignore
+      # list here rather than silently reintroducing `|| true`.
+      - run: pnpm audit --audit-level=high
 
   cargo-audit:
     name: cargo audit (Rust dependencies)
@@ -33,4 +36,19 @@ jobs:
       - uses: taiki-e/install-action@cargo-audit
       - name: Audit Rust dependencies
         working-directory: apps/desktop/src-tauri
-        run: cargo audit
+        # `cargo audit` already fails (non-zero exit) only on genuine vulnerability advisories,
+        # not on the informational "unmaintained"/"unsound" warnings below — those are all
+        # transitive dependencies pulled in by tauri/gtk/glib itself (Linux window-menu bindings)
+        # or tauri-utils' urlpattern parser, not a crate this app chose directly, and none of them
+        # are reachable through code this app actually calls. Documented explicitly (Phase 10)
+        # rather than left as unexplained noise in every run; revisit if `cargo tree -i <crate>`
+        # ever shows a different, fixable path.
+        run: |
+          cargo audit \
+            --ignore RUSTSEC-2024-0370 \
+            --ignore RUSTSEC-2025-0081 \
+            --ignore RUSTSEC-2025-0075 \
+            --ignore RUSTSEC-2025-0080 \
+            --ignore RUSTSEC-2025-0100 \
+            --ignore RUSTSEC-2025-0098 \
+            --ignore RUSTSEC-2024-0429
