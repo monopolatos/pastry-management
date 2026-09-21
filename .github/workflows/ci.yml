@@ -120,4 +120,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build desktop app (debug, unbundled)
-        run: pnpm --filter @pastry-management/desktop tauri build -- --debug --no-bundle
+        run: pnpm --filter @pastry-management/desktop tauri build --debug --no-bundle
