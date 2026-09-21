@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { UpdatesCard } from "./UpdatesCard";
 
 const LOCALE_LABELS: Record<Locale, string> = {
+  el: "Ελληνικά",
   en: "English",
 };
 

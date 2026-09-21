@@ -41,6 +41,7 @@ import {
 } from "./components/ui/sidebar";
 import { useI18n } from "./lib/i18n";
 import type { TranslationKey } from "./lib/i18n";
+import { USER_ROLE_LABEL_KEYS } from "./api/types";
 import type { SessionInfo } from "./api/types";
 
 type Tab =
@@ -179,7 +180,7 @@ function App() {
             <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
               <span className="truncate text-sm font-medium">{session.user.username}</span>
               <span className="truncate text-xs capitalize text-muted-foreground">
-                {session.user.role}
+                {t(USER_ROLE_LABEL_KEYS[session.user.role])}
               </span>
             </div>
           </div>

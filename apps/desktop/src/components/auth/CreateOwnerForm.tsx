@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { createOwnerAccount } from "../../api/auth";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -14,6 +15,7 @@ interface CreateOwnerFormProps {
 const KNOWN_FIELDS = ["username", "password"] as const;
 
 export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,7 +27,7 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
     formError.clear();
 
     if (password !== confirmPassword) {
-      formError.handle({ message: "Passwords do not match.", field: "confirmPassword" }, [
+      formError.handle({ message: t("auth.passwordsDoNotMatch"), field: "confirmPassword" }, [
         "confirmPassword",
       ]);
       return;
@@ -46,19 +48,17 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-center font-heading text-lg">Pastry Management</CardTitle>
+          <CardTitle className="text-center font-heading text-lg">{t("app.title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm text-muted-foreground">
-            No accounts exist yet. Create the owner account to get started.
-          </p>
+          <p className="mb-4 text-sm text-muted-foreground">{t("auth.noAccountsYet")}</p>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             {formError.general && (
               <p className="text-sm font-medium text-destructive">{formError.general}</p>
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="owner-username">Username</Label>
+              <Label htmlFor="owner-username">{t("auth.username")}</Label>
               <Input
                 id="owner-username"
                 name="username"
@@ -74,7 +74,7 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="owner-password">Password</Label>
+              <Label htmlFor="owner-password">{t("auth.password")}</Label>
               <Input
                 id="owner-password"
                 name="password"
@@ -90,7 +90,7 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="owner-confirm-password">Confirm password</Label>
+              <Label htmlFor="owner-confirm-password">{t("auth.confirmPassword")}</Label>
               <Input
                 id="owner-confirm-password"
                 name="confirmPassword"
@@ -108,7 +108,7 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
             </div>
 
             <Button type="submit" disabled={submitting} className="mt-2 w-full">
-              {submitting ? "Creating…" : "Create owner account"}
+              {submitting ? t("auth.creatingAccount") : t("auth.createOwnerAccount")}
             </Button>
           </form>
         </CardContent>

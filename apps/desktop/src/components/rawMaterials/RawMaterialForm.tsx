@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { toAppError } from "../../api/errors";
-import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABELS } from "../../api/types";
+import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABEL_KEYS } from "../../api/types";
 import type { Category, RawMaterial, RawMaterialInput, Supplier } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -64,6 +64,7 @@ export function RawMaterialForm({
   onSubmit,
   onCancel,
 }: RawMaterialFormProps) {
+  const { t, te } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState<string>(
@@ -122,7 +123,7 @@ export function RawMaterialForm({
       setNewCategoryName("");
       setShowNewCategoryInput(false);
     } catch (err) {
-      setNewCategoryError(toAppError(err).message);
+      setNewCategoryError(te(err));
     } finally {
       setCreatingCategory(false);
     }
@@ -133,6 +134,8 @@ export function RawMaterialForm({
     formError.clear();
 
     if (name.trim() === "") {
+      // Literal English text matching the Rust-side message exactly — see the equivalent
+      // comment in SupplierForm.tsx.
       formError.handle({ message: "Raw material name is required.", field: "name" }, ["name"]);
       return;
     }
@@ -150,9 +153,13 @@ export function RawMaterialForm({
       }
       const totalPriceNumber = parseFloat(purchaseTotalPrice);
       if (!Number.isFinite(totalPriceNumber) || totalPriceNumber < 0) {
-        formError.handle({ message: "Enter a valid total price.", field: "purchase_total_price" }, [
-          "purchase_total_price",
-        ]);
+        formError.handle(
+          {
+            message: t("purchaseRecord.enterValidTotalPrice"),
+            field: "purchase_total_price",
+          },
+          ["purchase_total_price"],
+        );
         return;
       }
       initialPurchase = {
@@ -193,7 +200,7 @@ export function RawMaterialForm({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="material-name">Name</Label>
+        <Label htmlFor="material-name">{t("common.name")}</Label>
         <Input
           id="material-name"
           type="text"
@@ -207,7 +214,7 @@ export function RawMaterialForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="material-description">Description</Label>
+        <Label htmlFor="material-description">{t("common.description")}</Label>
         <Textarea
           id="material-description"
           value={description}
@@ -216,7 +223,7 @@ export function RawMaterialForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="material-category">Category</Label>
+        <Label htmlFor="material-category">{t("common.category")}</Label>
         <Select
           value={categoryId === "" ? NONE_VALUE : categoryId}
           onValueChange={handleCategorySelectChange}
@@ -225,13 +232,15 @@ export function RawMaterialForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+            <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.name}
               </SelectItem>
             ))}
-            <SelectItem value={ADD_NEW_CATEGORY_VALUE}>+ Add new category…</SelectItem>
+            <SelectItem value={ADD_NEW_CATEGORY_VALUE}>
+              {t("rawMaterials.addNewCategory")}
+            </SelectItem>
           </SelectContent>
         </Select>
         {formError.fieldError("category_id") && (
@@ -241,7 +250,7 @@ export function RawMaterialForm({
         {showNewCategoryInput && (
           <div className="flex items-end gap-2 rounded-lg border p-2">
             <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="material-new-category">New category name</Label>
+              <Label htmlFor="material-new-category">{t("rawMaterials.newCategoryName")}</Label>
               <Input
                 id="material-new-category"
                 type="text"
@@ -257,7 +266,7 @@ export function RawMaterialForm({
               onClick={handleCreateCategory}
               disabled={creatingCategory}
             >
-              {creatingCategory ? "Adding…" : "Add"}
+              {creatingCategory ? t("common.adding") : t("common.add")}
             </Button>
             <Button
               type="button"
@@ -265,14 +274,14 @@ export function RawMaterialForm({
               variant="outline"
               onClick={() => setShowNewCategoryInput(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="material-base-unit">Base unit</Label>
+        <Label htmlFor="material-base-unit">{t("rawMaterials.baseUnit")}</Label>
         <Select value={baseUnitCode} onValueChange={handleBaseUnitChange}>
           <SelectTrigger id="material-base-unit" className="w-full">
             <SelectValue />
@@ -280,7 +289,7 @@ export function RawMaterialForm({
           <SelectContent>
             {BASE_UNIT_CODES.map((code) => (
               <SelectItem key={code} value={code}>
-                {UNIT_LABELS[code]}
+                {t(UNIT_LABEL_KEYS[code])}
               </SelectItem>
             ))}
           </SelectContent>
@@ -291,7 +300,7 @@ export function RawMaterialForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="material-default-supplier">Default supplier</Label>
+        <Label htmlFor="material-default-supplier">{t("rawMaterials.defaultSupplier")}</Label>
         <Select
           value={defaultSupplierId === "" ? NONE_VALUE : defaultSupplierId}
           onValueChange={(value) => setDefaultSupplierId(value === NONE_VALUE ? "" : value)}
@@ -300,7 +309,7 @@ export function RawMaterialForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+            <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
             {suppliers.map((supplier) => (
               <SelectItem key={supplier.id} value={String(supplier.id)}>
                 {supplier.name}
@@ -314,22 +323,23 @@ export function RawMaterialForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="material-notes">Notes</Label>
+        <Label htmlFor="material-notes">{t("common.notes")}</Label>
         <Textarea id="material-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
       {isCreate && (
         <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
           <legend className="px-1 text-sm font-semibold">
-            Set a starting price{" "}
+            {t("rawMaterials.setStartingPrice")}{" "}
             <span className="font-normal text-muted-foreground">
-              (optional — you can add this later)
+              {t("rawMaterials.setStartingPriceHint")}
             </span>
           </legend>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="material-purchase-supplier">
-              Supplier <span className="font-normal text-muted-foreground">(optional)</span>
+              {t("common.supplier")}{" "}
+              <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
             </Label>
             <Select
               value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
@@ -339,7 +349,7 @@ export function RawMaterialForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+                <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
                 {suppliers.map((supplier) => (
                   <SelectItem key={supplier.id} value={String(supplier.id)}>
                     {supplier.name}
@@ -350,7 +360,7 @@ export function RawMaterialForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-date">Purchase date</Label>
+            <Label htmlFor="material-purchase-date">{t("purchaseRecord.purchaseDate")}</Label>
             <Input
               id="material-purchase-date"
               type="date"
@@ -360,7 +370,7 @@ export function RawMaterialForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-quantity">Quantity</Label>
+            <Label htmlFor="material-purchase-quantity">{t("common.quantity")}</Label>
             <Input
               id="material-purchase-quantity"
               type="number"
@@ -377,7 +387,7 @@ export function RawMaterialForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-unit">Purchase unit</Label>
+            <Label htmlFor="material-purchase-unit">{t("purchaseRecord.purchaseUnit")}</Label>
             <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
               <SelectTrigger id="material-purchase-unit" className="w-full">
                 <SelectValue />
@@ -385,7 +395,7 @@ export function RawMaterialForm({
               <SelectContent>
                 {compatiblePurchaseUnits.map((code) => (
                   <SelectItem key={code} value={code}>
-                    {UNIT_LABELS[code]}
+                    {t(UNIT_LABEL_KEYS[code])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -393,7 +403,9 @@ export function RawMaterialForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-total-price">Total price paid (€)</Label>
+            <Label htmlFor="material-purchase-total-price">
+              {t("purchaseRecord.totalPricePaid")}
+            </Label>
             <Input
               id="material-purchase-total-price"
               type="number"
@@ -413,10 +425,14 @@ export function RawMaterialForm({
 
       <div className="flex gap-3">
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Saving…" : initial ? "Save changes" : "Add raw material"}
+          {submitting
+            ? t("common.saving")
+            : initial
+              ? t("common.saveChanges")
+              : t("rawMaterials.addRawMaterial")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

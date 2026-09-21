@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import * as categoriesApi from "../../api/categories";
-import { toAppError } from "../../api/errors";
 import type { Category } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +43,7 @@ export function CategoriesDialog({
   categories,
   onChanged,
 }: CategoriesDialogProps) {
+  const { t, te } = useI18n();
   const [includeInactive, setIncludeInactive] = useState(false);
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -80,7 +81,7 @@ export function CategoriesDialog({
       }
       onChanged();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -90,7 +91,7 @@ export function CategoriesDialog({
       await categoriesApi.deleteCategory(id);
       onChanged();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -98,16 +99,13 @@ export function CategoriesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Manage categories</DialogTitle>
-          <DialogDescription>
-            Categories used by raw materials. Archive one instead of deleting it if any raw material
-            still uses it.
-          </DialogDescription>
+          <DialogTitle>{t("rawMaterials.manageCategories")}</DialogTitle>
+          <DialogDescription>{t("categories.dialogDescription")}</DialogDescription>
         </DialogHeader>
 
         <form className="flex items-end gap-2" onSubmit={handleCreate}>
           <div className="flex flex-1 flex-col gap-1.5">
-            <Label htmlFor="new-category-name">New category</Label>
+            <Label htmlFor="new-category-name">{t("categories.newCategory")}</Label>
             <Input
               id="new-category-name"
               type="text"
@@ -119,7 +117,7 @@ export function CategoriesDialog({
             )}
           </div>
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Adding…" : "Add"}
+            {submitting ? t("common.adding") : t("common.add")}
           </Button>
         </form>
         {formError.general && (
@@ -134,7 +132,7 @@ export function CategoriesDialog({
               checked={includeInactive}
               onChange={(e) => setIncludeInactive(e.target.checked)}
             />
-            Show archived
+            {t("common.showArchived")}
           </Label>
         </div>
 
@@ -142,16 +140,16 @@ export function CategoriesDialog({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {visible.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
-                    No categories yet.
+                    {t("categories.empty")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -160,7 +158,7 @@ export function CategoriesDialog({
                     <TableCell>{category.name}</TableCell>
                     <TableCell>
                       <Badge variant={category.is_active ? "default" : "secondary"}>
-                        {category.is_active ? "Active" : "Archived"}
+                        {category.is_active ? t("common.active") : t("common.archived")}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -171,28 +169,31 @@ export function CategoriesDialog({
                           size="sm"
                           onClick={() => handleArchiveToggle(category)}
                         >
-                          {category.is_active ? "Archive" : "Reactivate"}
+                          {category.is_active ? t("common.archive") : t("common.reactivate")}
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button type="button" variant="destructive" size="sm">
-                              Delete
+                              {t("common.delete")}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete "{category.name}"?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                {t("common.deleteConfirmTitle").replace("{name}", category.name)}
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                This permanently deletes the category. This cannot be undone.
+                                {t("categories.deleteConfirmBody")}{" "}
+                                {t("common.deleteCannotBeUndone")}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                               <AlertDialogAction
                                 variant="destructive"
                                 onClick={() => handleDelete(category.id)}
                               >
-                                Delete
+                                {t("common.delete")}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

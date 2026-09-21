@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { UNIT_KIND_LABEL_KEYS } from "../../api/types";
 import type {
   IngredientType,
   MeasurementUnit,
@@ -10,6 +11,7 @@ import type {
   RecipeSummary,
 } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -63,6 +65,13 @@ export function RecipeForm({
   onSubmit,
   onCancel,
 }: RecipeFormProps) {
+  const { t } = useI18n();
+
+  function unitKindLabel(kind: string): string {
+    const key = UNIT_KIND_LABEL_KEYS[kind];
+    return key ? t(key) : kind;
+  }
+
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
@@ -180,8 +189,7 @@ export function RecipeForm({
       ) {
         formError.handle(
           {
-            message:
-              "Fill in a material or recipe, a quantity greater than zero, and a unit for every ingredient row.",
+            message: t("recipes.fillIngredientRow"),
             field: "ingredients",
           },
           ["ingredients"],
@@ -226,7 +234,7 @@ export function RecipeForm({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="recipe-name">Name</Label>
+        <Label htmlFor="recipe-name">{t("common.name")}</Label>
         <Input
           id="recipe-name"
           type="text"
@@ -240,7 +248,7 @@ export function RecipeForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="recipe-description">Description</Label>
+        <Label htmlFor="recipe-description">{t("common.description")}</Label>
         <Textarea
           id="recipe-description"
           value={description}
@@ -249,12 +257,12 @@ export function RecipeForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="recipe-category">Category</Label>
+        <Label htmlFor="recipe-category">{t("common.category")}</Label>
         <Input
           id="recipe-category"
           type="text"
           list="recipe-category-options"
-          placeholder="e.g. Cakes, Pastries, Fillings…"
+          placeholder={t("recipes.categoryPlaceholder")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         />
@@ -263,13 +271,11 @@ export function RecipeForm({
             <option key={c} value={c} />
           ))}
         </datalist>
-        <p className="text-xs text-muted-foreground">
-          Pick an existing category or type a new one.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("recipes.pickCategoryHint")}</p>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="recipe-instructions">Instructions</Label>
+        <Label htmlFor="recipe-instructions">{t("recipes.instructions")}</Label>
         <Textarea
           id="recipe-instructions"
           value={instructions}
@@ -279,7 +285,7 @@ export function RecipeForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="recipe-prep-time">Prep time (minutes)</Label>
+          <Label htmlFor="recipe-prep-time">{t("recipes.prepTimeMinutes")}</Label>
           <Input
             id="recipe-prep-time"
             type="number"
@@ -291,7 +297,7 @@ export function RecipeForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="recipe-cook-time">Cook time (minutes)</Label>
+          <Label htmlFor="recipe-cook-time">{t("recipes.cookTimeMinutes")}</Label>
           <Input
             id="recipe-cook-time"
             type="number"
@@ -305,7 +311,7 @@ export function RecipeForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="recipe-yield-quantity">Yield quantity</Label>
+          <Label htmlFor="recipe-yield-quantity">{t("recipes.yieldQuantity")}</Label>
           <Input
             id="recipe-yield-quantity"
             type="number"
@@ -321,7 +327,7 @@ export function RecipeForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="recipe-yield-unit">Yield unit</Label>
+          <Label htmlFor="recipe-yield-unit">{t("recipes.yieldUnit")}</Label>
           <Select value={yieldUnitCode} onValueChange={setYieldUnitCode}>
             <SelectTrigger id="recipe-yield-unit" className="w-full">
               <SelectValue />
@@ -329,7 +335,7 @@ export function RecipeForm({
             <SelectContent>
               {units.map((unit) => (
                 <SelectItem key={unit.code} value={unit.code}>
-                  {unit.code} ({unit.kind})
+                  {unit.code} ({unitKindLabel(unit.kind)})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -341,12 +347,12 @@ export function RecipeForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="recipe-notes">Notes</Label>
+        <Label htmlFor="recipe-notes">{t("common.notes")}</Label>
         <Textarea id="recipe-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
       <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
-        <legend className="px-1 text-sm font-semibold">Ingredients</legend>
+        <legend className="px-1 text-sm font-semibold">{t("recipes.ingredients")}</legend>
 
         {formError.fieldError("ingredients") && (
           <p className="text-sm text-destructive">{formError.fieldError("ingredients")}</p>
@@ -355,7 +361,7 @@ export function RecipeForm({
         {rows.map((row) => (
           <div key={row.key} className="flex flex-col gap-3 rounded-lg border p-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`ingredient-type-${row.key}`}>Type</Label>
+              <Label htmlFor={`ingredient-type-${row.key}`}>{t("recipes.type")}</Label>
               <Select
                 value={row.ingredient_type}
                 onValueChange={(value) => handleTypeChange(row.key, value as IngredientType)}
@@ -364,21 +370,23 @@ export function RecipeForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="raw_material">Raw material</SelectItem>
-                  <SelectItem value="recipe">Recipe (sub-recipe)</SelectItem>
+                  <SelectItem value="raw_material">{t("recipes.rawMaterialOption")}</SelectItem>
+                  <SelectItem value="recipe">{t("recipes.recipeSubRecipeOption")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {row.ingredient_type === "raw_material" ? (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`ingredient-material-${row.key}`}>Raw material</Label>
+                <Label htmlFor={`ingredient-material-${row.key}`}>
+                  {t("recipes.rawMaterialOption")}
+                </Label>
                 <Select
                   value={row.raw_material_id}
                   onValueChange={(value) => updateRow(row.key, { raw_material_id: value })}
                 >
                   <SelectTrigger id={`ingredient-material-${row.key}`} className="w-full">
-                    <SelectValue placeholder="(select a material)" />
+                    <SelectValue placeholder={t("recipes.selectMaterialPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {rawMaterials.map((m) => (
@@ -391,13 +399,13 @@ export function RecipeForm({
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`ingredient-recipe-${row.key}`}>Sub-recipe</Label>
+                <Label htmlFor={`ingredient-recipe-${row.key}`}>{t("recipes.subRecipe")}</Label>
                 <Select
                   value={row.sub_recipe_id}
                   onValueChange={(value) => updateRow(row.key, { sub_recipe_id: value })}
                 >
                   <SelectTrigger id={`ingredient-recipe-${row.key}`} className="w-full">
-                    <SelectValue placeholder="(select a recipe)" />
+                    <SelectValue placeholder={t("recipes.selectRecipePlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {recipeOptions.map((r) => (
@@ -412,7 +420,7 @@ export function RecipeForm({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`ingredient-quantity-${row.key}`}>Quantity</Label>
+                <Label htmlFor={`ingredient-quantity-${row.key}`}>{t("common.quantity")}</Label>
                 <Input
                   id={`ingredient-quantity-${row.key}`}
                   type="number"
@@ -424,7 +432,7 @@ export function RecipeForm({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`ingredient-unit-${row.key}`}>Unit</Label>
+                <Label htmlFor={`ingredient-unit-${row.key}`}>{t("recipes.unit")}</Label>
                 <Select
                   value={row.unit_code}
                   onValueChange={(value) => updateRow(row.key, { unit_code: value })}
@@ -435,7 +443,7 @@ export function RecipeForm({
                   <SelectContent>
                     {units.map((unit) => (
                       <SelectItem key={unit.code} value={unit.code}>
-                        {unit.code} ({unit.kind})
+                        {unit.code} ({unitKindLabel(unit.kind)})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -445,7 +453,7 @@ export function RecipeForm({
 
             <div>
               <Button type="button" variant="outline" size="sm" onClick={() => removeRow(row.key)}>
-                Remove ingredient
+                {t("recipes.removeIngredient")}
               </Button>
             </div>
           </div>
@@ -453,17 +461,21 @@ export function RecipeForm({
 
         <div>
           <Button type="button" variant="outline" onClick={addRow}>
-            Add ingredient
+            {t("recipes.addIngredient")}
           </Button>
         </div>
       </fieldset>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Saving…" : initial ? "Save changes" : "Add recipe"}
+          {submitting
+            ? t("common.saving")
+            : initial
+              ? t("common.saveChanges")
+              : t("recipes.addRecipe")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

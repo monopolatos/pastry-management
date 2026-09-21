@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import * as updatesApi from "../../api/updates";
-import { toAppError } from "../../api/errors";
 import type { UpdateCheckResult, UpdateSettings } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
@@ -29,7 +28,7 @@ type CheckStage =
   | "error";
 
 export function UpdatesCard() {
-  const { t } = useI18n();
+  const { t, te } = useI18n();
 
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
 
@@ -60,9 +59,9 @@ export function UpdatesCard() {
     updatesApi
       .getUpdateSettings()
       .then(applySettings)
-      .catch((err) => setSettingsLoadError(toAppError(err).message))
+      .catch((err) => setSettingsLoadError(te(err)))
       .finally(() => setSettingsLoading(false));
-  }, [applySettings]);
+  }, [applySettings, te]);
 
   useEffect(() => {
     refreshSettings();
@@ -86,7 +85,7 @@ export function UpdatesCard() {
       applySettings(updated);
       toast.success(t("common.save"));
     } catch (err) {
-      setSettingsError(toAppError(err).message);
+      setSettingsError(te(err));
     } finally {
       setSavingSettings(false);
     }
@@ -100,7 +99,7 @@ export function UpdatesCard() {
       setCheckResult(result);
       setStage(result.available ? "available" : "up-to-date");
     } catch (err) {
-      setStageError(toAppError(err).message);
+      setStageError(te(err));
       setStage("error");
     }
   }
@@ -112,7 +111,7 @@ export function UpdatesCard() {
       await updatesApi.downloadUpdate();
       setStage("downloaded");
     } catch (err) {
-      setStageError(toAppError(err).message);
+      setStageError(te(err));
       setStage("error");
     }
   }
@@ -124,7 +123,7 @@ export function UpdatesCard() {
       await updatesApi.installUpdate();
       setStage("ready-to-restart");
     } catch (err) {
-      setStageError(toAppError(err).message);
+      setStageError(te(err));
       setStage("error");
     }
   }
@@ -133,7 +132,7 @@ export function UpdatesCard() {
     try {
       await updatesApi.restartApp();
     } catch (err) {
-      setStageError(toAppError(err).message);
+      setStageError(te(err));
       setStage("error");
     }
   }

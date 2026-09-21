@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostBreakdown, RecipeCostingGraph } from "@pastry-management/core";
 import { toast } from "sonner";
-import { toAppError } from "../../api/errors";
 import * as recipesApi from "../../api/recipes";
 import type { CostSnapshotSummary, RecipeDetail as RecipeDetailData } from "../../api/types";
 import { describeCostingError } from "../../lib/costingErrors";
+import { translateErrorMessage } from "../../lib/errorTranslations";
+import { useI18n } from "../../lib/i18n";
 import { RecipeCostBreakdown } from "./RecipeCostBreakdown";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -38,6 +39,7 @@ function formatDateTime(iso: string): string {
  * offered for refreshing after e.g. a purchase price changes elsewhere.
  */
 export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
+  const { t, te, locale } = useI18n();
   const [graph, setGraph] = useState<RecipeCostingGraph | null>(null);
   const [breakdown, setBreakdown] = useState<CostBreakdown | null>(null);
   const [costLoading, setCostLoading] = useState(true);
@@ -60,12 +62,12 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         setBreakdown(calculateRecipeCost(fetchedGraph));
       })
       .catch((err) => {
-        setCostError(describeCostingError(err));
+        setCostError(describeCostingError(err, locale));
         setGraph(null);
         setBreakdown(null);
       })
       .finally(() => setCostLoading(false));
-  }, [recipe.id]);
+  }, [recipe.id, locale]);
 
   const refreshSnapshots = useCallback(() => {
     setSnapshotsLoading(true);
@@ -73,9 +75,9 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     recipesApi
       .listRecipeCostSnapshots(recipe.id)
       .then(setSnapshots)
-      .catch((err) => setSnapshotsError(toAppError(err).message))
+      .catch((err) => setSnapshotsError(te(err)))
       .finally(() => setSnapshotsLoading(false));
-  }, [recipe.id]);
+  }, [recipe.id, te]);
 
   useEffect(() => {
     calculateCost();
@@ -101,10 +103,10 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         breakdown.costPerYieldUnitMicros,
         JSON.stringify(breakdown),
       );
-      toast.success("Cost snapshot saved.");
+      toast.success(t("recipes.costSnapshotSaved"));
       refreshSnapshots();
     } catch (err) {
-      setSaveError(toAppError(err).message);
+      setSaveError(te(err));
     } finally {
       setSaving(false);
     }
@@ -115,42 +117,50 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       <div>
         <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onBack}>
           <ArrowLeft className="size-4" />
-          Back to recipes
+          {t("recipes.backToList")}
         </Button>
       </div>
 
       <div className="flex items-center gap-3">
         <h2 className="font-heading text-xl font-semibold">{recipe.name}</h2>
         <Badge variant={recipe.status === "active" ? "default" : "secondary"}>
-          {recipe.status === "active" ? "Active" : "Archived"}
+          {recipe.status === "active" ? t("common.active") : t("common.archived")}
         </Badge>
       </div>
 
       <Card>
         <CardContent>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
-            <dt className="font-medium text-muted-foreground">Category</dt>
+            <dt className="font-medium text-muted-foreground">{t("common.category")}</dt>
             <dd>{recipe.category ?? "—"}</dd>
-            <dt className="font-medium text-muted-foreground">Yield</dt>
+            <dt className="font-medium text-muted-foreground">{t("recipes.yield")}</dt>
             <dd>
               {recipe.yield_quantity} {recipe.yield_unit_code}
             </dd>
-            <dt className="font-medium text-muted-foreground">Prep time</dt>
-            <dd>{recipe.prep_time_minutes != null ? `${recipe.prep_time_minutes} min` : "—"}</dd>
-            <dt className="font-medium text-muted-foreground">Cook time</dt>
-            <dd>{recipe.cook_time_minutes != null ? `${recipe.cook_time_minutes} min` : "—"}</dd>
+            <dt className="font-medium text-muted-foreground">{t("recipes.prepTime")}</dt>
+            <dd>
+              {recipe.prep_time_minutes != null
+                ? t("recipes.minutesValue").replace("{n}", String(recipe.prep_time_minutes))
+                : "—"}
+            </dd>
+            <dt className="font-medium text-muted-foreground">{t("recipes.cookTime")}</dt>
+            <dd>
+              {recipe.cook_time_minutes != null
+                ? t("recipes.minutesValue").replace("{n}", String(recipe.cook_time_minutes))
+                : "—"}
+            </dd>
           </dl>
 
           {recipe.description && (
             <div className="mt-4">
-              <h3 className="text-sm font-semibold">Description</h3>
+              <h3 className="text-sm font-semibold">{t("common.description")}</h3>
               <p className="text-sm text-muted-foreground">{recipe.description}</p>
             </div>
           )}
 
           {recipe.instructions && (
             <div className="mt-4">
-              <h3 className="text-sm font-semibold">Instructions</h3>
+              <h3 className="text-sm font-semibold">{t("recipes.instructions")}</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {recipe.instructions}
               </p>
@@ -159,7 +169,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
           {recipe.notes && (
             <div className="mt-4">
-              <h3 className="text-sm font-semibold">Notes</h3>
+              <h3 className="text-sm font-semibold">{t("common.notes")}</h3>
               <p className="text-sm text-muted-foreground">{recipe.notes}</p>
             </div>
           )}
@@ -167,14 +177,14 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       </Card>
 
       <div className="flex flex-col gap-2">
-        <h3 className="font-heading text-base font-semibold">Ingredients</h3>
+        <h3 className="font-heading text-base font-semibold">{t("recipes.ingredients")}</h3>
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Unit</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.quantity")}</TableHead>
+                <TableHead>{t("recipes.unit")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -192,7 +202,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-4">
-          <h3 className="font-heading text-base font-semibold">Cost Breakdown</h3>
+          <h3 className="font-heading text-base font-semibold">{t("recipes.costBreakdown")}</h3>
           <Button
             type="button"
             variant="outline"
@@ -200,11 +210,13 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
             onClick={calculateCost}
             disabled={costLoading}
           >
-            {costLoading ? "Calculating…" : "Recalculate cost"}
+            {costLoading ? t("costCalculator.calculating") : t("recipes.recalculateCost")}
           </Button>
         </div>
 
-        {costLoading && <p className="text-sm text-muted-foreground">Calculating cost…</p>}
+        {costLoading && (
+          <p className="text-sm text-muted-foreground">{t("recipes.calculatingCostEllipsis")}</p>
+        )}
         {costError && <p className="text-sm font-medium text-destructive">{costError}</p>}
 
         {!costLoading && !costError && breakdown && (
@@ -212,24 +224,28 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
             <RecipeCostBreakdown breakdown={breakdown} />
 
             <div>
-              <h4 className="text-sm font-semibold">Prices used</h4>
+              <h4 className="text-sm font-semibold">{t("recipes.pricesUsed")}</h4>
               <ul className="mt-1 flex flex-col gap-0.5 text-sm text-muted-foreground">
                 {breakdown.pricingStrategyUsed.map((entry) => (
                   <li key={entry.rawMaterialId}>
                     {entry.rawMaterialName}: €{formatMoney(entry.costPerBaseUnitMicros, 4)}/
-                    {rawMaterialBaseUnit(entry.rawMaterialId)} ({entry.sourceDescription})
+                    {rawMaterialBaseUnit(entry.rawMaterialId)} (
+                    {translateErrorMessage(entry.sourceDescription, locale)})
                   </li>
                 ))}
               </ul>
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Calculated at {formatDateTime(breakdown.calculatedAt)}
+              {t("recipes.calculatedAt").replace(
+                "{datetime}",
+                formatDateTime(breakdown.calculatedAt),
+              )}
             </p>
 
             <div>
               <Button type="button" onClick={handleSaveCost} disabled={saving}>
-                {saving ? "Saving…" : "Save this cost"}
+                {saving ? t("common.saving") : t("recipes.saveThisCost")}
               </Button>
             </div>
             {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
@@ -238,21 +254,21 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="font-heading text-base font-semibold">Cost History</h3>
+        <h3 className="font-heading text-base font-semibold">{t("recipes.costHistory")}</h3>
         {snapshotsLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : snapshotsError ? (
           <p className="text-sm font-medium text-destructive">{snapshotsError}</p>
         ) : snapshots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No cost snapshots saved yet.</p>
+          <p className="text-sm text-muted-foreground">{t("recipes.noCostSnapshots")}</p>
         ) : (
           <div className="rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Total cost</TableHead>
-                  <TableHead>Cost per yield unit</TableHead>
+                  <TableHead>{t("common.date")}</TableHead>
+                  <TableHead>{t("recipes.totalCost")}</TableHead>
+                  <TableHead>{t("recipes.costPerYieldUnit")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

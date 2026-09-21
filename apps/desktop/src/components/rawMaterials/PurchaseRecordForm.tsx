@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { createPurchaseRecord } from "../../api/purchaseRecords";
-import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABELS } from "../../api/types";
+import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABEL_KEYS } from "../../api/types";
 import type { RawMaterial, Supplier } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -33,6 +34,7 @@ function today(): string {
 }
 
 export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: PurchaseRecordFormProps) {
+  const { t } = useI18n();
   // Filter the unit dropdown to units of the same kind (weight/volume/count) as the material's
   // base unit for a nicer UX — the backend is still the source of truth and rejects a mismatch
   // with a clear field error regardless.
@@ -66,9 +68,10 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
     }
     const totalPriceNumber = parseFloat(totalPrice);
     if (!Number.isFinite(totalPriceNumber) || totalPriceNumber < 0) {
-      formError.handle({ message: "Enter a valid total price.", field: "total_price_micros" }, [
-        "total_price_micros",
-      ]);
+      formError.handle(
+        { message: t("purchaseRecord.enterValidTotalPrice"), field: "total_price_micros" },
+        ["total_price_micros"],
+      );
       return;
     }
 
@@ -104,7 +107,8 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="purchase-supplier">
-          Supplier <span className="font-normal text-muted-foreground">(optional)</span>
+          {t("common.supplier")}{" "}
+          <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
         </Label>
         <Select
           value={supplierId === "" ? NONE_VALUE : supplierId}
@@ -114,7 +118,7 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+            <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
             {suppliers.map((supplier) => (
               <SelectItem key={supplier.id} value={String(supplier.id)}>
                 {supplier.name}
@@ -128,7 +132,7 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="purchase-date">Purchase date</Label>
+        <Label htmlFor="purchase-date">{t("purchaseRecord.purchaseDate")}</Label>
         <Input
           id="purchase-date"
           type="date"
@@ -142,7 +146,7 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="purchase-quantity">Quantity</Label>
+        <Label htmlFor="purchase-quantity">{t("common.quantity")}</Label>
         <Input
           id="purchase-quantity"
           type="number"
@@ -158,7 +162,7 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="purchase-unit">Purchase unit</Label>
+        <Label htmlFor="purchase-unit">{t("purchaseRecord.purchaseUnit")}</Label>
         <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
           <SelectTrigger id="purchase-unit" className="w-full">
             <SelectValue />
@@ -166,7 +170,7 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
           <SelectContent>
             {compatibleUnits.map((code) => (
               <SelectItem key={code} value={code}>
-                {UNIT_LABELS[code]}
+                {t(UNIT_LABEL_KEYS[code])}
               </SelectItem>
             ))}
           </SelectContent>
@@ -177,7 +181,7 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="purchase-total-price">Total price paid (€)</Label>
+        <Label htmlFor="purchase-total-price">{t("purchaseRecord.totalPricePaid")}</Label>
         <Input
           id="purchase-total-price"
           type="number"
@@ -194,7 +198,8 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="purchase-expiration">
-          Expiration date <span className="font-normal text-muted-foreground">(optional)</span>
+          {t("purchaseRecord.expirationDate")}{" "}
+          <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
         </Label>
         <Input
           id="purchase-expiration"
@@ -209,14 +214,15 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="purchase-notes">
-          Notes <span className="font-normal text-muted-foreground">(optional)</span>
+          {t("common.notes")}{" "}
+          <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
         </Label>
         <Textarea id="purchase-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
       <div>
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Recording…" : "Record purchase"}
+          {submitting ? t("purchaseRecord.recording") : t("purchaseRecord.recordPurchase")}
         </Button>
       </div>
     </form>

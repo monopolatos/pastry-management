@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Upload } from "lucide-react";
 import * as importApi from "../../api/import";
-import { toAppError } from "../../api/errors";
 import type { ImportSummary } from "../../api/types";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -47,6 +47,7 @@ function SummaryList({ title, items }: { title: string; items: string[] }) {
  * skipped. Re-running on the same file is safe: existing categories/raw materials are left alone.
  */
 export function ImportDialog({ onImported }: ImportDialogProps) {
+  const { t, te } = useI18n();
   const [state, setState] = useState<State>({ stage: "idle" });
   const [reportOpen, setReportOpen] = useState(false);
 
@@ -55,7 +56,7 @@ export function ImportDialog({ onImported }: ImportDialogProps) {
     try {
       path = await importApi.chooseExcelFile();
     } catch (err) {
-      setState({ stage: "error", message: toAppError(err).message });
+      setState({ stage: "error", message: te(err) });
       setReportOpen(true);
       return;
     }
@@ -68,7 +69,7 @@ export function ImportDialog({ onImported }: ImportDialogProps) {
       setState({ stage: "done", summary });
       onImported();
     } catch (err) {
-      setState({ stage: "error", message: toAppError(err).message });
+      setState({ stage: "error", message: te(err) });
     }
   }
 
@@ -76,21 +77,18 @@ export function ImportDialog({ onImported }: ImportDialogProps) {
     <>
       <Button type="button" variant="outline" onClick={handleClick}>
         <Upload className="size-4" />
-        Import from Excel
+        {t("import.title")}
       </Button>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import from Excel</DialogTitle>
-            <DialogDescription>
-              First sheet: products (name, category, price €/kg, comments). Second sheet:
-              categories.
-            </DialogDescription>
+            <DialogTitle>{t("import.title")}</DialogTitle>
+            <DialogDescription>{t("import.dialogDescription")}</DialogDescription>
           </DialogHeader>
 
           {state.stage === "importing" && (
-            <p className="text-sm text-muted-foreground">Importing…</p>
+            <p className="text-sm text-muted-foreground">{t("import.importing")}</p>
           )}
 
           {state.stage === "error" && (
@@ -99,18 +97,24 @@ export function ImportDialog({ onImported }: ImportDialogProps) {
 
           {state.stage === "done" && (
             <div className="flex flex-col gap-4">
-              <SummaryList title="Categories added" items={state.summary.categories_created} />
               <SummaryList
-                title="Categories already existed"
+                title={t("import.categoriesAdded")}
+                items={state.summary.categories_created}
+              />
+              <SummaryList
+                title={t("import.categoriesAlreadyExisted")}
                 items={state.summary.categories_already_existed}
               />
-              <SummaryList title="Raw materials added" items={state.summary.products_created} />
               <SummaryList
-                title="Skipped — already exist"
+                title={t("import.rawMaterialsAdded")}
+                items={state.summary.products_created}
+              />
+              <SummaryList
+                title={t("import.skippedExisting")}
                 items={state.summary.products_skipped_existing}
               />
               <SummaryList
-                title="Skipped — could not be imported"
+                title={t("import.skippedInvalid")}
                 items={state.summary.products_skipped_invalid}
               />
               {state.summary.categories_created.length === 0 &&
@@ -118,16 +122,14 @@ export function ImportDialog({ onImported }: ImportDialogProps) {
                 state.summary.products_created.length === 0 &&
                 state.summary.products_skipped_existing.length === 0 &&
                 state.summary.products_skipped_invalid.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Nothing found to import in this file.
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("import.nothingFound")}</p>
                 )}
             </div>
           )}
 
           <DialogFooter>
             <Button type="button" onClick={() => setReportOpen(false)}>
-              Close
+              {t("common.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

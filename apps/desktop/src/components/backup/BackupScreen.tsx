@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { DatabaseBackup } from "lucide-react";
 import { toast } from "sonner";
 import * as backupApi from "../../api/backup";
-import { toAppError } from "../../api/errors";
 import type { AutoBackupFrequency, BackupInfo, BackupSettings } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
@@ -32,7 +31,7 @@ import { formatBytes, formatDateTime } from "./format";
 const KNOWN_SETTINGS_FIELDS = ["retention_count", "auto_backup_frequency"] as const;
 
 export function BackupScreen() {
-  const { t } = useI18n();
+  const { t, te } = useI18n();
 
   // Settings card state
   const [settings, setSettings] = useState<BackupSettings | null>(null);
@@ -66,9 +65,9 @@ export function BackupScreen() {
     backupApi
       .getBackupSettings()
       .then(applySettings)
-      .catch((err) => setSettingsLoadError(toAppError(err).message))
+      .catch((err) => setSettingsLoadError(te(err)))
       .finally(() => setSettingsLoading(false));
-  }, [applySettings]);
+  }, [applySettings, te]);
 
   const refreshBackups = useCallback(() => {
     setBackupsLoading(true);
@@ -76,9 +75,9 @@ export function BackupScreen() {
     backupApi
       .listBackups()
       .then(setBackups)
-      .catch((err) => setBackupsLoadError(toAppError(err).message))
+      .catch((err) => setBackupsLoadError(te(err)))
       .finally(() => setBackupsLoading(false));
-  }, []);
+  }, [te]);
 
   useEffect(() => {
     refreshSettings();
@@ -153,7 +152,7 @@ export function BackupScreen() {
       toast.success(t("backup.createSuccess"));
       refreshBackups();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     } finally {
       setCreating(false);
     }
@@ -168,7 +167,7 @@ export function BackupScreen() {
         `${t("backup.validateSuccess")} v${result.app_version}, schema ${result.schema_version}, created ${formatDateTime(result.created_at)}`,
       );
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     } finally {
       setBusyPath(null);
     }
@@ -182,7 +181,7 @@ export function BackupScreen() {
       toast.success(t("backup.restoreSuccess"));
       refreshBackups();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     } finally {
       setBusyPath(null);
     }
@@ -195,7 +194,7 @@ export function BackupScreen() {
       await backupApi.deleteBackup(backup.path);
       refreshBackups();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     } finally {
       setBusyPath(null);
     }

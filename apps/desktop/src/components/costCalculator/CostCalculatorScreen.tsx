@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostBreakdown } from "@pastry-management/core";
-import { toAppError } from "../../api/errors";
 import * as recipesApi from "../../api/recipes";
 import type { RecipeSummary } from "../../api/types";
 import { describeCostingError } from "../../lib/costingErrors";
@@ -17,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
  * the same `RecipeCostBreakdown` component the Recipes screen uses.
  */
 export function CostCalculatorScreen() {
-  const { t } = useI18n();
+  const { t, te, locale } = useI18n();
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
@@ -35,7 +34,7 @@ export function CostCalculatorScreen() {
         if (!cancelled) setRecipes(result);
       })
       .catch((err) => {
-        if (!cancelled) setRecipesError(toAppError(err).message);
+        if (!cancelled) setRecipesError(te(err));
       })
       .finally(() => {
         if (!cancelled) setRecipesLoading(false);
@@ -43,7 +42,7 @@ export function CostCalculatorScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [te]);
 
   function handleSelect(value: string) {
     setSelectedId(value);
@@ -59,7 +58,7 @@ export function CostCalculatorScreen() {
         setBreakdown(calculateRecipeCost(graph));
       })
       .catch((err) => {
-        setCostError(describeCostingError(err));
+        setCostError(describeCostingError(err, locale));
       })
       .finally(() => setCostLoading(false));
   }

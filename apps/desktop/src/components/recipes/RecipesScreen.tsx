@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { toAppError } from "../../api/errors";
 import { listMeasurementUnits } from "../../api/measurementUnits";
 import { listRawMaterials } from "../../api/rawMaterials";
 import * as recipesApi from "../../api/recipes";
+import { UNIT_KIND_LABEL_KEYS } from "../../api/types";
 import type {
   MeasurementUnit,
   RawMaterial,
@@ -10,6 +10,7 @@ import type {
   RecipeInput,
   RecipeSummary,
 } from "../../api/types";
+import { useI18n } from "../../lib/i18n";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeForm } from "./RecipeForm";
 import {
@@ -32,12 +33,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; recipe: RecipeDetailData };
 
-function unitLabel(units: MeasurementUnit[], code: string): string {
-  const unit = units.find((u) => u.code === code);
-  return unit ? `${unit.code} (${unit.kind})` : code;
-}
-
 export function RecipesScreen() {
+  const { t, te } = useI18n();
+
+  function unitLabel(units: MeasurementUnit[], code: string): string {
+    const unit = units.find((u) => u.code === code);
+    if (!unit) return code;
+    const kindKey = UNIT_KIND_LABEL_KEYS[unit.kind];
+    return `${unit.code} (${kindKey ? t(kindKey) : unit.kind})`;
+  }
+
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   // Always active-only, regardless of the "show archived" toggle below — used to populate the
   // sub-recipe picker in the ingredient builder, which must never offer an archived recipe (the
@@ -67,9 +72,9 @@ export function RecipesScreen() {
         setRawMaterials(materialsResult);
         setUnits(unitsResult);
       })
-      .catch((err) => setLoadError(toAppError(err).message))
+      .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
-  }, [includeArchived]);
+  }, [includeArchived, te]);
 
   useEffect(() => {
     refresh();
@@ -93,7 +98,7 @@ export function RecipesScreen() {
       const detail = await recipesApi.getRecipe(id);
       setPanel({ mode: "edit", recipe: detail });
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -103,7 +108,7 @@ export function RecipesScreen() {
       const detail = await recipesApi.getRecipe(id);
       setSelectedRecipe(detail);
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -117,7 +122,7 @@ export function RecipesScreen() {
       }
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -127,7 +132,7 @@ export function RecipesScreen() {
       await recipesApi.duplicateRecipe(id, null);
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -137,7 +142,7 @@ export function RecipesScreen() {
       await recipesApi.deleteRecipe(id);
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -160,17 +165,17 @@ export function RecipesScreen() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">Recipes</h2>
+        <h2 className="font-heading text-xl font-semibold">{t("recipes.title")}</h2>
         <div className="flex items-center gap-4">
           <Label className="flex items-center gap-2 font-normal">
             <Checkbox
               checked={includeArchived}
               onCheckedChange={(checked) => setIncludeArchived(checked === true)}
             />
-            Show archived
+            {t("common.showArchived")}
           </Label>
           <Button type="button" onClick={() => setPanel({ mode: "create" })}>
-            Add recipe
+            {t("recipes.addRecipe")}
           </Button>
         </div>
       </div>
@@ -181,7 +186,7 @@ export function RecipesScreen() {
       {panel.mode === "create" && (
         <Card>
           <CardHeader>
-            <CardTitle>Add recipe</CardTitle>
+            <CardTitle>{t("recipes.addRecipe")}</CardTitle>
           </CardHeader>
           <CardContent>
             <RecipeForm
@@ -199,7 +204,7 @@ export function RecipesScreen() {
       {panel.mode === "edit" && (
         <Card>
           <CardHeader>
-            <CardTitle>Edit recipe</CardTitle>
+            <CardTitle>{t("recipes.editRecipe")}</CardTitle>
           </CardHeader>
           <CardContent>
             <RecipeForm
@@ -216,19 +221,19 @@ export function RecipesScreen() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : recipes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No recipes yet.</p>
+        <p className="text-sm text-muted-foreground">{t("recipes.empty")}</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Yield</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.category")}</TableHead>
+                <TableHead>{t("recipes.yield")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -250,7 +255,7 @@ export function RecipesScreen() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={recipe.status === "active" ? "default" : "secondary"}>
-                      {recipe.status === "active" ? "Active" : "Archived"}
+                      {recipe.status === "active" ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -261,7 +266,7 @@ export function RecipesScreen() {
                         size="sm"
                         onClick={() => openEdit(recipe.id)}
                       >
-                        Edit
+                        {t("common.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -269,7 +274,7 @@ export function RecipesScreen() {
                         size="sm"
                         onClick={() => handleArchiveToggle(recipe)}
                       >
-                        {recipe.status === "active" ? "Archive" : "Reactivate"}
+                        {recipe.status === "active" ? t("common.archive") : t("common.reactivate")}
                       </Button>
                       <Button
                         type="button"
@@ -277,28 +282,30 @@ export function RecipesScreen() {
                         size="sm"
                         onClick={() => handleDuplicate(recipe.id)}
                       >
-                        Duplicate
+                        {t("recipes.duplicate")}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button type="button" variant="destructive" size="sm">
-                            Delete
+                            {t("common.delete")}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete "{recipe.name}"?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {t("common.deleteConfirmTitle").replace("{name}", recipe.name)}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This permanently deletes the recipe. This cannot be undone.
+                              {t("recipes.deleteConfirmBody")} {t("common.deleteCannotBeUndone")}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                             <AlertDialogAction
                               variant="destructive"
                               onClick={() => handleDelete(recipe.id)}
                             >
-                              Delete
+                              {t("common.delete")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

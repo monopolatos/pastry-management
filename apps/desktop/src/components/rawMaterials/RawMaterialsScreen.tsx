@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import * as categoriesApi from "../../api/categories";
-import { toAppError } from "../../api/errors";
 import * as rawMaterialsApi from "../../api/rawMaterials";
 import { createPurchaseRecord } from "../../api/purchaseRecords";
 import { listSuppliers } from "../../api/suppliers";
-import { UNIT_LABELS } from "../../api/types";
+import { UNIT_LABEL_KEYS } from "../../api/types";
 import type {
   BaseUnitCode,
   Category,
@@ -12,6 +11,7 @@ import type {
   RawMaterialInput,
   Supplier,
 } from "../../api/types";
+import { useI18n } from "../../lib/i18n";
 import { CategoriesDialog } from "./CategoriesDialog";
 import { ImportDialog } from "./ImportDialog";
 import { RawMaterialDetail } from "./RawMaterialDetail";
@@ -37,11 +37,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
 
-function unitLabel(code: string): string {
-  return UNIT_LABELS[code as BaseUnitCode] ?? code;
-}
-
 export function RawMaterialsScreen() {
+  const { t, te } = useI18n();
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -69,9 +66,9 @@ export function RawMaterialsScreen() {
         setSuppliers(suppliersResult);
         setCategories(categoriesResult);
       })
-      .catch((err) => setLoadError(toAppError(err).message))
+      .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
-  }, [includeInactive]);
+  }, [includeInactive, te]);
 
   useEffect(() => {
     refresh();
@@ -83,6 +80,14 @@ export function RawMaterialsScreen() {
       return categories.find((c) => c.id === categoryId)?.name ?? `Category #${categoryId}`;
     },
     [categories],
+  );
+
+  const unitLabel = useCallback(
+    (code: string): string => {
+      const key = UNIT_LABEL_KEYS[code as BaseUnitCode];
+      return key ? t(key) : code;
+    },
+    [t],
   );
 
   async function handleCreateCategory(name: string): Promise<Category> {
@@ -131,7 +136,7 @@ export function RawMaterialsScreen() {
       }
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -141,7 +146,7 @@ export function RawMaterialsScreen() {
       await rawMaterialsApi.deleteRawMaterial(id);
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -167,21 +172,21 @@ export function RawMaterialsScreen() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">Raw Materials</h2>
+        <h2 className="font-heading text-xl font-semibold">{t("rawMaterials.title")}</h2>
         <div className="flex items-center gap-4">
           <Label className="flex items-center gap-2 font-normal">
             <Checkbox
               checked={includeInactive}
               onCheckedChange={(checked) => setIncludeInactive(checked === true)}
             />
-            Show inactive
+            {t("common.showInactive")}
           </Label>
           <Button type="button" variant="outline" onClick={() => setCategoriesDialogOpen(true)}>
-            Manage categories
+            {t("rawMaterials.manageCategories")}
           </Button>
           <ImportDialog onImported={refresh} />
           <Button type="button" onClick={() => setPanel({ mode: "create" })}>
-            Add raw material
+            {t("rawMaterials.addRawMaterial")}
           </Button>
         </div>
       </div>
@@ -199,7 +204,7 @@ export function RawMaterialsScreen() {
       {panel.mode === "create" && (
         <Card>
           <CardHeader>
-            <CardTitle>Add raw material</CardTitle>
+            <CardTitle>{t("rawMaterials.addRawMaterial")}</CardTitle>
           </CardHeader>
           <CardContent>
             <RawMaterialForm
@@ -216,7 +221,7 @@ export function RawMaterialsScreen() {
       {panel.mode === "edit" && (
         <Card>
           <CardHeader>
-            <CardTitle>Edit raw material</CardTitle>
+            <CardTitle>{t("rawMaterials.editRawMaterial")}</CardTitle>
           </CardHeader>
           <CardContent>
             <RawMaterialForm
@@ -232,19 +237,19 @@ export function RawMaterialsScreen() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : materials.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No raw materials yet.</p>
+        <p className="text-sm text-muted-foreground">{t("rawMaterials.empty")}</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Base unit</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.category")}</TableHead>
+                <TableHead>{t("rawMaterials.baseUnit")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -264,7 +269,7 @@ export function RawMaterialsScreen() {
                   <TableCell>{unitLabel(material.base_unit_code)}</TableCell>
                   <TableCell>
                     <Badge variant={material.is_active ? "default" : "secondary"}>
-                      {material.is_active ? "Active" : "Archived"}
+                      {material.is_active ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -275,7 +280,7 @@ export function RawMaterialsScreen() {
                         size="sm"
                         onClick={() => setPanel({ mode: "edit", material })}
                       >
-                        Edit
+                        {t("common.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -283,28 +288,31 @@ export function RawMaterialsScreen() {
                         size="sm"
                         onClick={() => handleArchiveToggle(material)}
                       >
-                        {material.is_active ? "Archive" : "Reactivate"}
+                        {material.is_active ? t("common.archive") : t("common.reactivate")}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button type="button" variant="destructive" size="sm">
-                            Delete
+                            {t("common.delete")}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete "{material.name}"?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {t("common.deleteConfirmTitle").replace("{name}", material.name)}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This permanently deletes the raw material. This cannot be undone.
+                              {t("rawMaterials.deleteConfirmBody")}{" "}
+                              {t("common.deleteCannotBeUndone")}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                             <AlertDialogAction
                               variant="destructive"
                               onClick={() => handleDelete(material.id)}
                             >
-                              Delete
+                              {t("common.delete")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

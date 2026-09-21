@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { setupRequired } from "../../api/auth";
 import type { SessionInfo } from "../../api/types";
+import { useI18n } from "../../lib/i18n";
 import { CreateOwnerForm } from "./CreateOwnerForm";
 import { LoginForm } from "./LoginForm";
 
@@ -15,6 +16,7 @@ type Mode = "loading" | "create-owner" | "login";
  * created first, then shows either the create-owner form or the login form.
  */
 export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("loading");
   const [prefillUsername, setPrefillUsername] = useState("");
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
@@ -40,8 +42,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   if (mode === "loading") {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-2 text-center">
-        <h1 className="font-heading text-xl font-semibold">Pastry Management</h1>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <h1 className="font-heading text-xl font-semibold">{t("app.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       </main>
     );
   }
@@ -51,7 +53,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       <CreateOwnerForm
         onCreated={(username) => {
           setPrefillUsername(username);
-          setInfoMessage("Account created. Please sign in.");
+          setInfoMessage(t("auth.accountCreatedPleaseSignIn"));
           setMode("login");
         }}
       />

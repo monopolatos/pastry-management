@@ -1,4 +1,5 @@
 import type { CostBreakdown } from "@pastry-management/core";
+import { useI18n } from "../../lib/i18n";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 /** Format money the same way RawMaterialDetail.tsx does: whole-currency amounts to 2 decimals,
@@ -20,6 +21,7 @@ interface RecipeCostBreakdownProps {
  * a collapsible `<details>` so deep graphs don't overwhelm the page by default.
  */
 export function RecipeCostBreakdown({ breakdown }: RecipeCostBreakdownProps) {
+  const { t } = useI18n();
   const nestedLines = breakdown.lines.filter((line) => line.subBreakdown);
 
   return (
@@ -28,9 +30,9 @@ export function RecipeCostBreakdown({ breakdown }: RecipeCostBreakdownProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ingredient</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Line cost</TableHead>
+              <TableHead>{t("recipes.ingredient")}</TableHead>
+              <TableHead>{t("common.quantity")}</TableHead>
+              <TableHead>{t("recipes.lineCost")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -48,13 +50,13 @@ export function RecipeCostBreakdown({ breakdown }: RecipeCostBreakdownProps) {
       </div>
 
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="font-medium text-muted-foreground">Total cost</dt>
+        <dt className="font-medium text-muted-foreground">{t("recipes.totalCost")}</dt>
         <dd className="font-semibold">€{formatMoney(breakdown.totalCostMicros)}</dd>
-        <dt className="font-medium text-muted-foreground">Yield</dt>
+        <dt className="font-medium text-muted-foreground">{t("recipes.yield")}</dt>
         <dd>
           {breakdown.yieldQuantity} {breakdown.yieldUnit}
         </dd>
-        <dt className="font-medium text-muted-foreground">Cost per yield unit</dt>
+        <dt className="font-medium text-muted-foreground">{t("recipes.costPerYieldUnit")}</dt>
         <dd className="font-semibold">€{formatMoney(breakdown.costPerYieldUnitMicros, 4)}</dd>
       </dl>
 
@@ -66,7 +68,7 @@ export function RecipeCostBreakdown({ breakdown }: RecipeCostBreakdownProps) {
               className="rounded-lg border px-3 py-2"
             >
               <summary className="cursor-pointer text-sm font-medium">
-                {line.name} — sub-recipe cost breakdown
+                {t("recipes.subRecipeCostBreakdown").replace("{name}", line.name)}
               </summary>
               <div className="mt-3 border-l-2 pl-4">
                 {line.subBreakdown && <RecipeCostBreakdown breakdown={line.subBreakdown} />}

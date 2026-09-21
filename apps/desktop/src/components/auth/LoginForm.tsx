@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { login } from "../../api/auth";
 import type { SessionInfo } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -17,6 +18,7 @@ interface LoginFormProps {
 const KNOWN_FIELDS = ["username", "password"] as const;
 
 export function LoginForm({ initialUsername = "", infoMessage, onLoggedIn }: LoginFormProps) {
+  const { t } = useI18n();
   const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +42,7 @@ export function LoginForm({ initialUsername = "", infoMessage, onLoggedIn }: Log
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-center font-heading text-lg">Pastry Management</CardTitle>
+          <CardTitle className="text-center font-heading text-lg">{t("app.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           {infoMessage && <p className="mb-4 text-sm font-medium text-primary">{infoMessage}</p>}
@@ -50,7 +52,7 @@ export function LoginForm({ initialUsername = "", infoMessage, onLoggedIn }: Log
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="login-username">Username</Label>
+              <Label htmlFor="login-username">{t("auth.username")}</Label>
               <Input
                 id="login-username"
                 name="username"
@@ -66,7 +68,7 @@ export function LoginForm({ initialUsername = "", infoMessage, onLoggedIn }: Log
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="login-password">Password</Label>
+              <Label htmlFor="login-password">{t("auth.password")}</Label>
               <Input
                 id="login-password"
                 name="password"
@@ -82,7 +84,7 @@ export function LoginForm({ initialUsername = "", infoMessage, onLoggedIn }: Log
             </div>
 
             <Button type="submit" disabled={submitting} className="mt-2 w-full">
-              {submitting ? "Signing in…" : "Sign in"}
+              {submitting ? t("auth.signingIn") : t("auth.signIn")}
             </Button>
           </form>
         </CardContent>

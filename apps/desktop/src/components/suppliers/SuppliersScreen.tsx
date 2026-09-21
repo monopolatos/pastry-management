@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as suppliersApi from "../../api/suppliers";
-import { toAppError } from "../../api/errors";
 import type { Supplier, SupplierInput } from "../../api/types";
+import { useI18n } from "../../lib/i18n";
 import { SupplierForm } from "./SupplierForm";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; supplier: Supplier };
 
 export function SuppliersScreen() {
+  const { t, te } = useI18n();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,9 +38,9 @@ export function SuppliersScreen() {
     suppliersApi
       .listSuppliers(includeInactive)
       .then(setSuppliers)
-      .catch((err) => setLoadError(toAppError(err).message))
+      .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
-  }, [includeInactive]);
+  }, [includeInactive, te]);
 
   useEffect(() => {
     refresh();
@@ -67,7 +68,7 @@ export function SuppliersScreen() {
       }
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
@@ -77,24 +78,24 @@ export function SuppliersScreen() {
       await suppliersApi.deleteSupplier(id);
       refresh();
     } catch (err) {
-      setRowError(toAppError(err).message);
+      setRowError(te(err));
     }
   }
 
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">Suppliers</h2>
+        <h2 className="font-heading text-xl font-semibold">{t("suppliers.title")}</h2>
         <div className="flex items-center gap-4">
           <Label className="flex items-center gap-2 font-normal">
             <Checkbox
               checked={includeInactive}
               onCheckedChange={(checked) => setIncludeInactive(checked === true)}
             />
-            Show inactive
+            {t("common.showInactive")}
           </Label>
           <Button type="button" onClick={() => setPanel({ mode: "create" })}>
-            Add supplier
+            {t("suppliers.addSupplier")}
           </Button>
         </div>
       </div>
@@ -105,7 +106,7 @@ export function SuppliersScreen() {
       {panel.mode === "create" && (
         <Card>
           <CardHeader>
-            <CardTitle>Add supplier</CardTitle>
+            <CardTitle>{t("suppliers.addSupplier")}</CardTitle>
           </CardHeader>
           <CardContent>
             <SupplierForm onSubmit={handleCreate} onCancel={() => setPanel({ mode: "closed" })} />
@@ -116,7 +117,7 @@ export function SuppliersScreen() {
       {panel.mode === "edit" && (
         <Card>
           <CardHeader>
-            <CardTitle>Edit supplier</CardTitle>
+            <CardTitle>{t("suppliers.editSupplier")}</CardTitle>
           </CardHeader>
           <CardContent>
             <SupplierForm
@@ -129,20 +130,20 @@ export function SuppliersScreen() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : suppliers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No suppliers yet.</p>
+        <p className="text-sm text-muted-foreground">{t("suppliers.empty")}</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact person</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("suppliers.contactPerson")}</TableHead>
+                <TableHead>{t("suppliers.phone")}</TableHead>
+                <TableHead>{t("suppliers.email")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,7 +155,7 @@ export function SuppliersScreen() {
                   <TableCell>{supplier.email ?? "—"}</TableCell>
                   <TableCell>
                     <Badge variant={supplier.is_active ? "default" : "secondary"}>
-                      {supplier.is_active ? "Active" : "Archived"}
+                      {supplier.is_active ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -165,7 +166,7 @@ export function SuppliersScreen() {
                         size="sm"
                         onClick={() => setPanel({ mode: "edit", supplier })}
                       >
-                        Edit
+                        {t("common.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -173,28 +174,30 @@ export function SuppliersScreen() {
                         size="sm"
                         onClick={() => handleArchiveToggle(supplier)}
                       >
-                        {supplier.is_active ? "Archive" : "Reactivate"}
+                        {supplier.is_active ? t("common.archive") : t("common.reactivate")}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button type="button" variant="destructive" size="sm">
-                            Delete
+                            {t("common.delete")}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete "{supplier.name}"?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {t("common.deleteConfirmTitle").replace("{name}", supplier.name)}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This permanently deletes the supplier. This cannot be undone.
+                              {t("suppliers.deleteConfirmBody")} {t("common.deleteCannotBeUndone")}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                             <AlertDialogAction
                               variant="destructive"
                               onClick={() => handleDelete(supplier.id)}
                             >
-                              Delete
+                              {t("common.delete")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

@@ -4,7 +4,15 @@
  * the Rust structs by hand — there is no shared schema generation in this phase.
  */
 
+import type { TranslationKey } from "../lib/i18n";
+
 export type UserRole = "owner" | "admin" | "employee";
+
+export const USER_ROLE_LABEL_KEYS: Record<UserRole, TranslationKey> = {
+  owner: "users.roleOwner",
+  admin: "users.roleAdmin",
+  employee: "users.roleEmployee",
+};
 
 export interface UserPublic {
   id: number;
@@ -107,12 +115,14 @@ export interface PurchaseRecordInput {
 export const BASE_UNIT_CODES = ["g", "kg", "ml", "l", "piece"] as const;
 export type BaseUnitCode = (typeof BASE_UNIT_CODES)[number];
 
-export const UNIT_LABELS: Record<BaseUnitCode, string> = {
-  g: "Grams (g)",
-  kg: "Kilograms (kg)",
-  ml: "Milliliters (ml)",
-  l: "Liters (l)",
-  piece: "Piece",
+/** Keys into the `t()` dictionary (`lib/i18n.tsx`) — units are UI display text, so they're
+ * translated like everything else rather than kept as a static English-only map. */
+export const UNIT_LABEL_KEYS: Record<BaseUnitCode, TranslationKey> = {
+  g: "units.g",
+  kg: "units.kg",
+  ml: "units.ml",
+  l: "units.l",
+  piece: "units.piece",
 };
 
 export type UnitKind = "weight" | "volume" | "count";
@@ -123,6 +133,15 @@ export const UNIT_KINDS: Record<BaseUnitCode, UnitKind> = {
   ml: "volume",
   l: "volume",
   piece: "count",
+};
+
+/** Keys into the `t()` dictionary for a measurement unit's `kind` (recipes fetch units live via
+ * `list_measurement_units`, whose `kind` field is a plain string, not the closed `UnitKind` union
+ * above — hence `Record<string, TranslationKey>` rather than `Record<UnitKind, TranslationKey>`). */
+export const UNIT_KIND_LABEL_KEYS: Record<string, TranslationKey> = {
+  weight: "unitKind.weight",
+  volume: "unitKind.volume",
+  count: "unitKind.count",
 };
 
 export const PRICING_STRATEGIES: readonly PricingStrategy[] = ["latest", "average_n", "manual"];

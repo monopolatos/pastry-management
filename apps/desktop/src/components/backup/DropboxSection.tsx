@@ -5,7 +5,6 @@ import { Cloud } from "lucide-react";
 import { toast } from "sonner";
 import * as backupApi from "../../api/backup";
 import * as cloudBackupApi from "../../api/cloudBackup";
-import { toAppError } from "../../api/errors";
 import type {
   AutoBackupFrequency,
   BackupInfo,
@@ -56,7 +55,7 @@ interface DropboxSectionProps {
  * but no account connected ("configured"), and a connected account ("connected").
  */
 export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSectionProps) {
-  const { t } = useI18n();
+  const { t, te } = useI18n();
 
   // Setup & connection card state
   const [settings, setSettings] = useState<DropboxSettings | null>(null);
@@ -104,9 +103,9 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
     cloudBackupApi
       .getDropboxSettings()
       .then(applyStatus)
-      .catch((err) => setSettingsLoadError(toAppError(err).message))
+      .catch((err) => setSettingsLoadError(te(err)))
       .finally(() => setSettingsLoading(false));
-  }, [applyStatus]);
+  }, [applyStatus, te]);
 
   const refreshRemoteBackups = useCallback(() => {
     setRemoteLoading(true);
@@ -114,9 +113,9 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
     cloudBackupApi
       .dropboxListBackups()
       .then(setRemoteBackups)
-      .catch((err) => setRemoteLoadError(toAppError(err).message))
+      .catch((err) => setRemoteLoadError(te(err)))
       .finally(() => setRemoteLoading(false));
-  }, []);
+  }, [te]);
 
   useEffect(() => {
     refreshStatus();
@@ -204,7 +203,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       applyStatus(status);
       toast.success(t("backup.dropboxConnectSuccess"));
     } catch (err) {
-      setConnectionError(toAppError(err).message);
+      setConnectionError(te(err));
     } finally {
       setConnecting(false);
     }
@@ -218,7 +217,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       applyStatus(status);
       toast.success(t("backup.dropboxDisconnectSuccess"));
     } catch (err) {
-      setConnectionError(toAppError(err).message);
+      setConnectionError(te(err));
     } finally {
       setDisconnecting(false);
     }
@@ -231,7 +230,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       await cloudBackupApi.dropboxTestConnection();
       toast.success(t("backup.dropboxTestSuccess"));
     } catch (err) {
-      toast.error(toAppError(err).message);
+      toast.error(te(err));
     } finally {
       setTestingConnection(false);
     }
@@ -247,7 +246,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       setSelectedLocalPath("");
       refreshRemoteBackups();
     } catch (err) {
-      setRemoteRowError(toAppError(err).message);
+      setRemoteRowError(te(err));
     } finally {
       setUploadingExisting(false);
     }
@@ -263,7 +262,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       toast.success(t("backup.dropboxBackupNowSuccess"));
       refreshRemoteBackups();
     } catch (err) {
-      setRemoteRowError(toAppError(err).message);
+      setRemoteRowError(te(err));
     } finally {
       setBackingUpNow(false);
     }
@@ -276,7 +275,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       await cloudBackupApi.dropboxRestoreBackup(handle.id, handle.name);
       toast.success(t("backup.dropboxRestoreSuccess"));
     } catch (err) {
-      setRemoteRowError(toAppError(err).message);
+      setRemoteRowError(te(err));
     } finally {
       setBusyRemoteId(null);
     }
@@ -289,7 +288,7 @@ export function DropboxSection({ localBackups, onLocalBackupCreated }: DropboxSe
       await cloudBackupApi.dropboxDeleteBackup(handle.id);
       refreshRemoteBackups();
     } catch (err) {
-      setRemoteRowError(toAppError(err).message);
+      setRemoteRowError(te(err));
     } finally {
       setBusyRemoteId(null);
     }

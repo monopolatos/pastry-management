@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { toAppError } from "../../api/errors";
 import { listPurchaseRecordsForMaterial } from "../../api/purchaseRecords";
-import { UNIT_LABELS } from "../../api/types";
+import { UNIT_LABEL_KEYS } from "../../api/types";
 import type {
   BaseUnitCode,
   Category,
@@ -10,6 +9,7 @@ import type {
   RawMaterial,
   Supplier,
 } from "../../api/types";
+import { useI18n } from "../../lib/i18n";
 import { PurchaseRecordForm } from "./PurchaseRecordForm";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -26,10 +26,6 @@ interface RawMaterialDetailProps {
   onBack: () => void;
 }
 
-function unitLabel(code: string): string {
-  return UNIT_LABELS[code as BaseUnitCode] ?? code;
-}
-
 function formatMoney(micros: number, digits: number): string {
   return (micros / 1_000_000).toFixed(digits);
 }
@@ -41,9 +37,18 @@ export function RawMaterialDetail({
   justCreated = false,
   onBack,
 }: RawMaterialDetailProps) {
+  const { t, te } = useI18n();
   const [history, setHistory] = useState<PurchaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const unitLabel = useCallback(
+    (code: string): string => {
+      const key = UNIT_LABEL_KEYS[code as BaseUnitCode];
+      return key ? t(key) : code;
+    },
+    [t],
+  );
 
   const supplierName = useCallback(
     (supplierId: number | null): string => {
@@ -66,9 +71,9 @@ export function RawMaterialDetail({
     setLoadError(null);
     listPurchaseRecordsForMaterial(material.id)
       .then(setHistory)
-      .catch((err) => setLoadError(toAppError(err).message))
+      .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
-  }, [material.id]);
+  }, [material.id, te]);
 
   useEffect(() => {
     refresh();
@@ -81,52 +86,58 @@ export function RawMaterialDetail({
       <div>
         <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onBack}>
           <ArrowLeft className="size-4" />
-          Back to raw materials
+          {t("rawMaterials.backToList")}
         </Button>
       </div>
 
       <div className="flex items-center gap-3">
         <h2 className="font-heading text-xl font-semibold">{material.name}</h2>
         <Badge variant={material.is_active ? "default" : "secondary"}>
-          {material.is_active ? "Active" : "Archived"}
+          {material.is_active ? t("common.active") : t("common.archived")}
         </Badge>
       </div>
 
       {justCreated && (
         <div className="rounded-lg border-l-4 border-l-primary bg-muted/50 px-4 py-3 text-sm">
-          "{material.name}" was created. It has no price yet — record its first purchase below to
-          set one.
+          {t("rawMaterials.justCreatedNotice").replace("{name}", material.name)}
         </div>
       )}
 
       <Card>
         <CardContent>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
-            <dt className="font-medium text-muted-foreground">Category</dt>
+            <dt className="font-medium text-muted-foreground">{t("common.category")}</dt>
             <dd>{categoryName(material.category_id)}</dd>
-            <dt className="font-medium text-muted-foreground">Base unit</dt>
+            <dt className="font-medium text-muted-foreground">{t("rawMaterials.baseUnit")}</dt>
             <dd>{unitLabel(material.base_unit_code)}</dd>
           </dl>
         </CardContent>
       </Card>
 
       <div className="flex flex-col gap-2">
-        <h3 className="font-heading text-base font-semibold">Purchase history</h3>
+        <h3 className="font-heading text-base font-semibold">
+          {t("rawMaterials.purchaseHistory")}
+        </h3>
         {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No purchases recorded yet.</p>
+          <p className="text-sm text-muted-foreground">{t("rawMaterials.noPurchasesYet")}</p>
         ) : (
           <div className="rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Total price</TableHead>
-                  <TableHead>Cost per {unitLabel(material.base_unit_code)}</TableHead>
+                  <TableHead>{t("common.date")}</TableHead>
+                  <TableHead>{t("common.supplier")}</TableHead>
+                  <TableHead>{t("common.quantity")}</TableHead>
+                  <TableHead>{t("rawMaterials.totalPrice")}</TableHead>
+                  <TableHead>
+                    {t("rawMaterials.costPer").replace(
+                      "{unit}",
+                      unitLabel(material.base_unit_code),
+                    )}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -148,7 +159,9 @@ export function RawMaterialDetail({
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="font-heading text-base font-semibold">Record new purchase</h3>
+        <h3 className="font-heading text-base font-semibold">
+          {t("rawMaterials.recordNewPurchase")}
+        </h3>
         <Card>
           <CardContent>
             <PurchaseRecordForm

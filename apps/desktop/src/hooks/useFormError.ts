@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 import { toAppError } from "../api/errors";
+import { translateErrorMessage } from "../lib/errorTranslations";
+import { useI18n } from "../lib/i18n";
 
 /**
  * Consistent convention for showing backend errors on a form: a general, form-level banner for
@@ -21,6 +23,7 @@ import { toAppError } from "../api/errors";
  *   {formError.fieldError("email") && <p className="field-error">{formError.fieldError("email")}</p>}
  */
 export function useFormError() {
+  const { locale } = useI18n();
   const [general, setGeneral] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
 
@@ -29,16 +32,20 @@ export function useFormError() {
     setFields({});
   }, []);
 
-  const handle = useCallback((err: unknown, knownFields: readonly string[]) => {
-    const appErr = toAppError(err);
-    if (appErr.field && knownFields.includes(appErr.field)) {
-      setGeneral(null);
-      setFields({ [appErr.field]: appErr.message });
-    } else {
-      setGeneral(appErr.message);
-      setFields({});
-    }
-  }, []);
+  const handle = useCallback(
+    (err: unknown, knownFields: readonly string[]) => {
+      const appErr = toAppError(err);
+      const message = translateErrorMessage(appErr.message, locale);
+      if (appErr.field && knownFields.includes(appErr.field)) {
+        setGeneral(null);
+        setFields({ [appErr.field]: message });
+      } else {
+        setGeneral(message);
+        setFields({});
+      }
+    },
+    [locale],
+  );
 
   const fieldError = useCallback((name: string): string | undefined => fields[name], [fields]);
 

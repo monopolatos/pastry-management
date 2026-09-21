@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { Supplier, SupplierInput } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -21,6 +22,7 @@ function emptyToNull(value: string): string | null {
 }
 
 export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [contactPerson, setContactPerson] = useState(initial?.contact_person ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
@@ -36,6 +38,9 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
     formError.clear();
 
     if (name.trim() === "") {
+      // Literal English text matching the Rust-side message exactly, so useFormError's
+      // translateErrorMessage lookup (see src/lib/errorTranslations.ts) translates it the same
+      // way it would if the backend had rejected this — one Greek string, not two to keep in sync.
       formError.handle({ message: "Supplier name is required.", field: "name" }, ["name"]);
       return;
     }
@@ -65,7 +70,7 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-name">Name</Label>
+        <Label htmlFor="supplier-name">{t("common.name")}</Label>
         <Input
           id="supplier-name"
           type="text"
@@ -79,7 +84,7 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-contact-person">Contact person</Label>
+        <Label htmlFor="supplier-contact-person">{t("suppliers.contactPerson")}</Label>
         <Input
           id="supplier-contact-person"
           type="text"
@@ -89,7 +94,7 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-phone">Phone</Label>
+        <Label htmlFor="supplier-phone">{t("suppliers.phone")}</Label>
         <Input
           id="supplier-phone"
           type="text"
@@ -99,7 +104,7 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-email">Email</Label>
+        <Label htmlFor="supplier-email">{t("suppliers.email")}</Label>
         <Input
           id="supplier-email"
           type="email"
@@ -112,7 +117,7 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-address">Address</Label>
+        <Label htmlFor="supplier-address">{t("suppliers.address")}</Label>
         <Textarea
           id="supplier-address"
           value={address}
@@ -121,7 +126,7 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-vat">VAT number</Label>
+        <Label htmlFor="supplier-vat">{t("suppliers.vatNumber")}</Label>
         <Input
           id="supplier-vat"
           type="text"
@@ -131,16 +136,20 @@ export function SupplierForm({ initial, onSubmit, onCancel }: SupplierFormProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-notes">Notes</Label>
+        <Label htmlFor="supplier-notes">{t("common.notes")}</Label>
         <Textarea id="supplier-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Saving…" : initial ? "Save changes" : "Add supplier"}
+          {submitting
+            ? t("common.saving")
+            : initial
+              ? t("common.saveChanges")
+              : t("suppliers.addSupplier")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

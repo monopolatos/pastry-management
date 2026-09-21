@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
 import { changePassword } from "../../api/auth";
+import { USER_ROLE_LABEL_KEYS } from "../../api/types";
 import type { SessionInfo } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
@@ -65,7 +66,7 @@ export function ProfileScreen({ session }: ProfileScreenProps) {
             <dt className="font-medium text-muted-foreground">{t("profile.username")}</dt>
             <dd>{session.user.username}</dd>
             <dt className="font-medium text-muted-foreground">{t("profile.role")}</dt>
-            <dd className="capitalize">{session.user.role}</dd>
+            <dd className="capitalize">{t(USER_ROLE_LABEL_KEYS[session.user.role])}</dd>
             <dt className="font-medium text-muted-foreground">{t("profile.createdAt")}</dt>
             <dd>{formatDate(session.user.created_at)}</dd>
           </dl>

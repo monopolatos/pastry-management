@@ -2,8 +2,10 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
 import { createUser } from "../../api/auth";
+import { USER_ROLE_LABEL_KEYS } from "../../api/types";
 import type { UserRole } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -20,6 +22,7 @@ const ROLES: UserRole[] = ["owner", "admin", "employee"];
  * regardless).
  */
 export function UsersSection() {
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("employee");
@@ -32,7 +35,11 @@ export function UsersSection() {
     setSubmitting(true);
     try {
       const user = await createUser(username, password, role);
-      toast.success(`Created account "${user.username}" with role "${user.role}".`);
+      toast.success(
+        t("users.createdSuccess")
+          .replace("{username}", user.username)
+          .replace("{role}", t(USER_ROLE_LABEL_KEYS[user.role])),
+      );
       setUsername("");
       setPassword("");
       setRole("employee");
@@ -47,7 +54,7 @@ export function UsersSection() {
     <section className="flex flex-col gap-4">
       <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle>Add a user</CardTitle>
+          <CardTitle>{t("users.addUser")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -56,7 +63,7 @@ export function UsersSection() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="new-user-username">Username</Label>
+              <Label htmlFor="new-user-username">{t("auth.username")}</Label>
               <Input
                 id="new-user-username"
                 type="text"
@@ -70,7 +77,7 @@ export function UsersSection() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="new-user-password">Password</Label>
+              <Label htmlFor="new-user-password">{t("auth.password")}</Label>
               <Input
                 id="new-user-password"
                 type="password"
@@ -84,7 +91,7 @@ export function UsersSection() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="new-user-role">Role</Label>
+              <Label htmlFor="new-user-role">{t("users.role")}</Label>
               <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
                 <SelectTrigger id="new-user-role" className="w-full">
                   <SelectValue />
@@ -92,7 +99,7 @@ export function UsersSection() {
                 <SelectContent>
                   {ROLES.map((r) => (
                     <SelectItem key={r} value={r}>
-                      {r}
+                      {t(USER_ROLE_LABEL_KEYS[r])}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -104,7 +111,7 @@ export function UsersSection() {
 
             <div>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating…" : "Create user"}
+                {submitting ? t("common.creating") : t("users.createUser")}
               </Button>
             </div>
           </form>

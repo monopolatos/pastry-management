@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { DatabaseBackup } from "lucide-react";
-import { toAppError } from "../../api/errors";
 import { listRawMaterials } from "../../api/rawMaterials";
 import { listRecentPurchaseRecords } from "../../api/purchaseRecords";
 import { listRecipes } from "../../api/recipes";
@@ -31,7 +30,7 @@ function formatDate(iso: string): string {
  * `list_recent_purchase_records` command (see api/purchaseRecords.ts).
  */
 export function DashboardScreen() {
-  const { t } = useI18n();
+  const { t, te } = useI18n();
   const [counts, setCounts] = useState<Counts | null>(null);
   const [recentRecipes, setRecentRecipes] = useState<RecipeSummary[]>([]);
   const [recentPurchases, setRecentPurchases] = useState<RecentPurchaseRecord[]>([]);
@@ -62,7 +61,7 @@ export function DashboardScreen() {
         setRecentPurchases(purchases);
       })
       .catch((err) => {
-        if (!cancelled) setLoadError(toAppError(err).message);
+        if (!cancelled) setLoadError(te(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -70,7 +69,7 @@ export function DashboardScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [te]);
 
   return (
     <section className="flex flex-col gap-6">
