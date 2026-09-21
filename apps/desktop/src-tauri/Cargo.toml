@@ -37,6 +37,7 @@ keyring = { version = "4.2.0", features = ["apple-native-keyring-store"] }
 base64 = "0.23.1"
 rand = "0.10.3"
 tokio = { version = "1.53.1", features = ["fs", "time", "rt", "macros"] }
+tauri-plugin-updater = "2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

@@ -12,9 +12,13 @@ name: Release
 # Signing: if the Apple/Windows code-signing secrets below are configured, tauri-action signs the
 # installers with them automatically; if they're absent, it just builds unsigned artifacts (which
 # will trigger Gatekeeper/SmartScreen warnings on first run — see README "Known Limitations").
-# Update-package signing (Tauri's own Ed25519 updater signature) is separate and lands in Phase 9
-# alongside the updater itself — there is no point signing update artifacts for an app that can't
-# check for updates yet.
+#
+# Update-package signing (Tauri's own Ed25519 updater signature, Phase 9) is a *separate* key pair
+# from OS code-signing above — it signs the `latest.json` manifest + update artifacts that
+# tauri-plugin-updater checks, not the installers themselves. Configure it via the
+# TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD secrets (see
+# docs/backup-and-updates.md §3); without them, tauri-action still builds ordinary installers, it
+# just skips producing the updater artifacts, so in-app update checks will find nothing published.
 
 on:
   push:
@@ -82,6 +86,7 @@ jobs:
       # on `env.HAS_*_SIGNING == 'true'` instead.
       HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
       HAS_WINDOWS_SIGNING: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+      HAS_UPDATER_SIGNING: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -143,6 +148,15 @@ jobs:
         run: |
           echo "WINDOWS_CERTIFICATE=${{ secrets.WINDOWS_CERTIFICATE }}" >> "$env:GITHUB_ENV"
           echo "WINDOWS_CERTIFICATE_PASSWORD=${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}" >> "$env:GITHUB_ENV"
+
+      # Same "only set when genuinely configured" rule as the OS code-signing steps above — see
+      # their comment for why referencing the secret directly in `env:` would be unsafe here too.
+      - name: Configure optional updater signing env
+        if: env.HAS_UPDATER_SIGNING == 'true'
+        shell: bash
+        run: |
+          echo "TAURI_SIGNING_PRIVATE_KEY=${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> "$GITHUB_ENV"
 
       # --- Tag push: build and draft a GitHub Release ------------------------------------------
       - name: Build and draft release

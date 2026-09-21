@@ -161,6 +161,27 @@ const dictionaries = {
     "settings.currencyNote":
       "The app currently assumes EUR throughout. Multi-currency support may be added in a future update.",
 
+    "settings.updates": "Updates",
+    "settings.updatesCurrentVersion": "Current version",
+    "settings.updatesAutoCheck": "Automatically check for updates",
+    "settings.updatesAutoCheckNote": "Checks at most once per launch, at most every 24 hours.",
+    "settings.updatesAutoDownload": "Automatically download updates",
+    "settings.updatesAutoInstall": "Automatically install updates",
+    "settings.updatesAutoInstallNote":
+      "Restarting to apply an installed update is always a separate, explicit step — it never happens automatically.",
+    "settings.updatesCheckNow": "Check for updates",
+    "settings.updatesChecking": "Checking for updates…",
+    "settings.updatesUpToDate": "You're up to date.",
+    "settings.updatesAvailable": "Update available",
+    "settings.updatesDownload": "Download",
+    "settings.updatesDownloading": "Downloading…",
+    "settings.updatesReadyToInstall": "Downloaded — ready to install.",
+    "settings.updatesInstall": "Install",
+    "settings.updatesInstalling": "Installing…",
+    "settings.updatesReadyToRestart": "Installed — restart to finish updating.",
+    "settings.updatesRestart": "Restart now",
+    "settings.updatesError": "Something went wrong checking for updates.",
+
     "profile.title": "User Profile",
     "profile.username": "Username",
     "profile.role": "Role",

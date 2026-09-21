@@ -318,3 +318,30 @@ export interface RemoteBackupHandle {
   size_bytes: number;
   modified_at: string;
 }
+
+/**
+ * `commands::updates` (see src-tauri/src/db/repositories/update_settings.rs's `UpdateSettings`
+ * struct). A single settings row, created lazily with sensible defaults (auto-check on,
+ * auto-download/auto-install off) on first access.
+ */
+export interface UpdateSettings {
+  id: number;
+  auto_check_enabled: boolean;
+  auto_download_enabled: boolean;
+  auto_install_enabled: boolean;
+  last_checked_at: string | null;
+}
+
+export interface UpdateSettingsInput {
+  auto_check_enabled: boolean;
+  auto_download_enabled: boolean;
+  auto_install_enabled: boolean;
+}
+
+/** `commands::updates::check_for_update`'s `UpdateCheckResult`. */
+export interface UpdateCheckResult {
+  available: boolean;
+  current_version: string | null;
+  version: string | null;
+  notes: string | null;
+}

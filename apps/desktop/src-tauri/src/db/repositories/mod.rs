@@ -5,3 +5,4 @@ pub mod purchase_records;
 pub mod raw_materials;
 pub mod recipes;
 pub mod suppliers;
+pub mod update_settings;
