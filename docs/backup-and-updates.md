@@ -1,4 +1,6 @@
-# Backup, Restore, Cloud Storage & Auto-Update Strategy (Phase 1 Design)
+# Backup, Restore, Cloud Storage & Auto-Update Strategy
+
+Local backup (§1) was a Phase 1 design, **implemented in Phase 6** (`apps/desktop/src-tauri/src/backup/mod.rs`, `db/repositories/backup_settings.rs`, `commands/backup.rs`) — 66 passing Rust tests including an exact "create → mutate → restore → assert identical" round-trip. See §1a for where the implementation differs from or refines this original sketch. Cloud backup (§2) and auto-updates (§3) remain Phase 1 designs, not yet implemented (Phases 7 and 9 respectively).
 
 ## 1. Local Backup
 
@@ -18,6 +20,15 @@
 3. Create an automatic **safety backup of the current live database** before touching it (same local backup mechanism, labeled `pre-restore-safety-*`).
 4. Only after 1-3 succeed: atomically swap the staged, validated DB file in for the live one (write to a temp path, `fsync`, then rename — rename is atomic on all three target filesystems), inside a file lock that blocks concurrent app operations.
 5. On any failure at any step, the live database is untouched and the user gets a specific error identifying which step failed.
+
+## 1a. Implementation Notes (Phase 6)
+
+- **Filename format**: `{prefix}-YYYY-MM-DD-HHMMSS.zip`, where `prefix` is `backup` for ordinary backups or the label (e.g. `pre-restore-safety`) for special-purpose ones — both share the same directory and archive format, distinguished by the `label` field in each archive's own `manifest.json` (surfaced in the UI as a badge) rather than by separate storage.
+- **`app_settings`**: the target schema (`docs/database-schema.md`) documents a general key-value `app_settings` table, but it hasn't been created by any migration yet — no feature has needed it so far. The "contents of a backup" list above is accurate for what actually exists today (the whole SQLite file, which is whatever tables exist at backup time); when `app_settings` is eventually added, it's automatically included for free, same as every other table, with no change needed to the backup code.
+- **Concurrency / "file lock that blocks concurrent app operations"**: rather than a separate OS-level file lock, the running app is a single process where every database-touching command already serializes through one `Mutex<Connection>` (`DbState`). The `restore_backup` command holds that same mutex for its entire duration, which fully blocks every other command from touching the database mid-restore within this process — an OS-level lock would only matter for multiple _processes_ sharing one database file, which isn't this app's architecture (each installation owns its own local SQLite file).
+- **Restore's live-connection swap**: on POSIX filesystems, renaming a file doesn't invalidate a still-open handle to the old inode, so the sequence is: validate → stage → safety-backup → copy the staged file into place at the live path (via a temp file + `fsync` + rename, so the live path never shows a partially-written file) → _only then_ drop and reopen the live `rusqlite::Connection` against the now-updated path. This avoids needing to close the live connection before the filesystem operations, simplifying failure handling (if anything fails before the final reopen, the still-open original connection keeps working against the untouched original data). Documented cross-platform caveat: Windows' mandatory file locking can behave differently here; this hasn't been an issue on the Linux target this project has been developed and tested on, but would need verification before a Windows release.
+- **Automatic backups**: implemented as a check performed once at app launch (if enabled and the configured `daily`/`weekly` interval has elapsed since the last automatic run), not a persistent background timer while the app stays open. This was a deliberate scope decision — a launch-time check delivers real "your data gets backed up automatically" value without the complexity (and "don't interrupt the user" concerns) of a long-running in-process scheduler. Runs on a background thread so it never delays startup.
+- **Retention**: applied only to ordinary (unlabeled) backups after a successful manual or automatic backup — a `pre-restore-safety` backup taken moments before a restore is never itself the backup that retention prunes away as a side effect of the operation that just created it.
 
 ## 2. Cloud Backup Provider Abstraction
 

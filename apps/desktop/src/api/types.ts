@@ -234,3 +234,49 @@ export interface RecentPurchaseRecord {
   base_unit_code: string;
   created_at: string;
 }
+
+/**
+ * `commands::backup` (see src-tauri/src/db/repositories/backup_settings.rs's `BackupSettings`
+ * struct). A single `destination_type = 'local'` settings row, created lazily with sensible
+ * defaults on first access.
+ */
+export type AutoBackupFrequency = "daily" | "weekly";
+
+export interface BackupSettings {
+  id: number;
+  local_path: string;
+  auto_backup_enabled: boolean;
+  auto_backup_frequency: AutoBackupFrequency | null;
+  retention_count: number;
+  last_auto_backup_at: string | null;
+}
+
+export interface BackupSettingsInput {
+  /** `null` leaves the current local_path unchanged (see backup_settings::update). */
+  local_path: string | null;
+  auto_backup_enabled: boolean;
+  auto_backup_frequency: AutoBackupFrequency | null;
+  retention_count: number;
+}
+
+/**
+ * `commands::backup::{create_backup, list_backups}` (see src-tauri/src/backup/mod.rs's
+ * `BackupInfo` struct). `label` is non-null only for special-purpose backups such as the
+ * automatic `"pre-restore-safety"` backup taken just before a restore.
+ */
+export interface BackupInfo {
+  file_name: string;
+  path: string;
+  created_at: string;
+  app_version: string;
+  schema_version: number;
+  size_bytes: number;
+  label: string | null;
+}
+
+/** `commands::backup::validate_backup_file`'s `ValidatedBackupDto`. */
+export interface ValidatedBackup {
+  app_version: string;
+  schema_version: number;
+  created_at: string;
+}

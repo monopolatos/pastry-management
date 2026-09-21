@@ -1,8 +1,10 @@
 mod auth;
+mod backup;
 mod commands;
 mod db;
 mod error;
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use rusqlite::Connection;
@@ -14,6 +16,11 @@ use auth::SessionState;
 /// desktop app has no need for a connection pool, so one guarded connection is the simplest
 /// correct choice here.
 pub struct DbState(pub Mutex<Connection>);
+
+/// The live database file's path, managed separately from `DbState` so commands that need the
+/// path (backup/restore) don't have to change `DbState`'s shape or touch its many existing call
+/// sites throughout the codebase.
+pub struct DbPathState(pub PathBuf);
 
 #[tauri::command]
 fn db_status(state: tauri::State<DbState>) -> Result<String, String> {
@@ -28,10 +35,49 @@ fn db_status(state: tauri::State<DbState>) -> Result<String, String> {
     Ok(format!("ok (schema version {schema_version})"))
 }
 
+/// Runs at most once per launch: if automatic backups are enabled and one is actually overdue per
+/// the configured frequency, create it in the background so startup is never delayed by backup
+/// I/O. There is no persistent timer while the app stays open — see
+/// db::repositories::backup_settings::is_auto_backup_due for the rationale.
+fn run_startup_auto_backup_check(app: &tauri::AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let db_state = app.state::<DbState>();
+        let db_path_state = app.state::<DbPathState>();
+
+        let conn = match db_state.0.lock() {
+            Ok(guard) => guard,
+            Err(_) => return,
+        };
+
+        let default_dir = db_path_state
+            .0
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join("backups");
+        let Ok(settings) =
+            db::repositories::backup_settings::get_or_create_default(&conn, &default_dir)
+        else {
+            return;
+        };
+
+        if !db::repositories::backup_settings::is_auto_backup_due(&settings) {
+            return;
+        }
+
+        let dest_dir = PathBuf::from(&settings.local_path);
+        if backup::create_backup(&conn, &db_path_state.0, &dest_dir, None).is_ok() {
+            let _ = backup::enforce_retention(&dest_dir, settings.retention_count);
+            let _ = db::repositories::backup_settings::mark_auto_backup_run(&conn, settings.id);
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -44,7 +90,11 @@ pub fn run() {
                 .unwrap_or_else(|e| panic!("failed to open/migrate database at {db_path:?}: {e}"));
 
             app.manage(DbState(Mutex::new(conn)));
+            app.manage(DbPathState(db_path));
             app.manage(SessionState::default());
+
+            run_startup_auto_backup_check(app.handle());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -85,6 +135,14 @@ pub fn run() {
             commands::recipes::get_recipe_costing_graph,
             commands::recipes::save_recipe_cost_snapshot,
             commands::recipes::list_recipe_cost_snapshots,
+            commands::backup::get_backup_settings,
+            commands::backup::update_backup_settings,
+            commands::backup::choose_backup_directory,
+            commands::backup::create_backup,
+            commands::backup::list_backups,
+            commands::backup::validate_backup_file,
+            commands::backup::restore_backup,
+            commands::backup::delete_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

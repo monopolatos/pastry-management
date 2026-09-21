@@ -26,6 +26,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "recipes",
         include_str!("../../migrations/0003_recipes.sql"),
     ),
+    (
+        4,
+        "backup_settings",
+        include_str!("../../migrations/0004_backup_settings.sql"),
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -49,6 +54,13 @@ pub enum DbError {
          Update the application before opening this database."
     )]
     SchemaTooNew { db_version: i64, app_version: i64 },
+}
+
+/// The highest migration version this build of the app knows how to apply — used outside this
+/// module (e.g. by the backup engine) to decide whether a given database/backup's schema is one
+/// this app version can safely open.
+pub fn max_known_migration_version() -> i64 {
+    MIGRATIONS.iter().map(|(v, _, _)| *v).max().unwrap_or(0)
 }
 
 /// Opens (creating if necessary) the SQLite database at `path`, applies any pending migrations in
@@ -214,7 +226,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 3);
+        assert_eq!(applied, 4);
 
         drop(conn);
         let _ = fs::remove_file(&path);
@@ -234,7 +246,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 3, "migrations should not be re-applied");
+        assert_eq!(applied, 4, "migrations should not be re-applied");
 
         drop(conn);
         let _ = fs::remove_file(&path);
