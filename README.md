@@ -4,8 +4,11 @@ A cross-platform desktop application for pastry shops and bakeries: raw material
 purchase price history, recipes with nested sub-recipes, automatic recipe costing, local and cloud
 backups, and self-updating releases.
 
-**Status:** early implementation (Phase 2 of the roadmap — project scaffolding). See
-[`docs/roadmap.md`](docs/roadmap.md) for what's built vs. planned. Sections below describe the
+**Status:** Phases 2-8 of the roadmap are done (core data, costing engine, UI, local backup, Dropbox
+cloud backup, and a working CI/CD release pipeline verified end-to-end on GitHub Actions). Phase 9
+(auto-updates) is next. See [`docs/roadmap.md`](docs/roadmap.md) for the full phase-by-phase status,
+including the honest gaps (e.g. Windows/macOS installers built in CI but not yet manually verified
+installing and launching, since development so far has been Linux-only). Sections below describe the
 target design; anything not yet implemented is marked as such.
 
 ## 1. Purpose
