@@ -1,0 +1,160 @@
+name: Release
+
+# Two ways to run this:
+#   1. Push a `vX.Y.Z` tag — builds every platform and drafts a GitHub Release with the installers
+#      attached. The release is always created as a DRAFT (never auto-published) so a human
+#      decides when it actually goes out, per docs/architecture.md.
+#   2. Run manually (workflow_dispatch), from any branch — builds every platform and uploads the
+#      installers as workflow artifacts for inspection, but never creates or touches a GitHub
+#      Release. This is a deliberate safety choice: a manual run can't accidentally publish a
+#      release just because someone fat-fingered "Run workflow" — only an actual version tag can.
+#
+# Signing: if the Apple/Windows code-signing secrets below are configured, tauri-action signs the
+# installers with them automatically; if they're absent, it just builds unsigned artifacts (which
+# will trigger Gatekeeper/SmartScreen warnings on first run — see README "Known Limitations").
+# Update-package signing (Tauri's own Ed25519 updater signature) is separate and lands in Phase 9
+# alongside the updater itself — there is no point signing update artifacts for an app that can't
+# check for updates yet.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TAURI_PROJECT_PATH: apps/desktop
+
+jobs:
+  validate-version:
+    name: Validate tag matches configured version everywhere
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare tag to every version-bearing file
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAURI_VERSION=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          DESKTOP_PKG_VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          CARGO_VERSION=$(grep -m1 '^version' apps/desktop/src-tauri/Cargo.toml | sed -E 's/version = "(.*)"/\1/')
+
+          fail=0
+          check() {
+            if [ "$2" != "$TAG_VERSION" ]; then
+              echo "::error::$1 has version $2, which does not match tag v$TAG_VERSION."
+              fail=1
+            fi
+          }
+          check "apps/desktop/src-tauri/tauri.conf.json" "$TAURI_VERSION"
+          check "apps/desktop/package.json" "$DESKTOP_PKG_VERSION"
+          check "apps/desktop/src-tauri/Cargo.toml" "$CARGO_VERSION"
+
+          if [ "$fail" != "0" ]; then
+            echo "::error::Bump every version-bearing file to $TAG_VERSION (or re-tag to match them) before releasing."
+            exit 1
+          fi
+          echo "All version-bearing files match tag v$TAG_VERSION."
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: [validate-version]
+    if: always() && (needs.validate-version.result == 'success' || needs.validate-version.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux Tauri build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libdbus-1-dev \
+            libssl-dev \
+            build-essential \
+            pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add macOS universal-binary targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --- Tag push: build and draft a GitHub Release ------------------------------------------
+      - name: Build and draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        with:
+          projectPath: ${{ env.TAURI_PROJECT_PATH }}
+          tagName: ${{ github.ref_name }}
+          releaseName: "Pastry Management ${{ github.ref_name }}"
+          releaseBody: |
+            See the commit history for what changed in this release.
+
+            **Before publishing:** verify the attached installers actually install and launch on
+            their target OS (per docs/roadmap.md Phase 8's acceptance criteria) — this release is
+            a draft specifically so that check happens before it goes out.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      # --- Manual dispatch: build only, upload as a workflow artifact, never touch Releases ----
+      - name: Build (dry run, no release)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: pnpm --filter @pastry-management/desktop tauri build ${{ matrix.args }}
+
+      - name: Upload dry-run build artifacts
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pastry-management-${{ matrix.platform }}
+          path: apps/desktop/src-tauri/target/**/bundle/**
+          if-no-files-found: warn
+          retention-days: 14

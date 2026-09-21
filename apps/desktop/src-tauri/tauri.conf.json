@@ -13,8 +13,11 @@
     "windows": [
       {
         "title": "Pastry Management",
-        "width": 800,
-        "height": 600
+        "width": 1280,
+        "height": 832,
+        "minWidth": 960,
+        "minHeight": 600,
+        "center": true
       }
     ],
     "security": {
@@ -23,7 +26,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["deb", "appimage", "msi", "nsis", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

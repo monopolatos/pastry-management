@@ -96,10 +96,23 @@ see [`docs/roadmap.md`](docs/roadmap.md) Phase 8.
 
 ## 9. Releases
 
-Tagged `v*.*.*` pushes trigger the release workflow, which builds signed installers for all three
-platforms and drafts a GitHub Release for manual publish (dev builds are never auto-published as
-official releases). Details: `docs/backup-and-updates.md` §3, once the release workflow lands
-(Phase 8/9).
+Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`, which builds installers for Windows,
+macOS (universal, arm64 + x64), and Linux (`.deb` + `.AppImage`) and drafts a GitHub Release with
+them attached — **as a draft**, never auto-published, so a human verifies the installers actually
+install and launch before clicking "Publish."
+
+Before tagging: bump the version to match in `apps/desktop/src-tauri/tauri.conf.json`,
+`apps/desktop/package.json`, and `apps/desktop/src-tauri/Cargo.toml` — the workflow's first job
+fails loudly if any of them don't match the tag, rather than silently building a mislabeled
+release. To dry-run the packaging step without publishing anything, trigger the workflow manually
+from the Actions tab (`workflow_dispatch`); a manual run always just uploads the installers as
+downloadable workflow artifacts and never touches GitHub Releases.
+
+Code signing (Apple notarization, Windows Authenticode) is opt-in via GitHub Actions secrets — see
+§13 and the comments at the top of `release.yml` for the exact secret names. Without them,
+installers build successfully but are unsigned (OS security warnings on first run). Update-package
+signing (Tauri's own Ed25519 updater signature) is separate and lands with the updater itself in
+Phase 9.
 
 ## 10. Backup Configuration
 
@@ -140,6 +153,11 @@ Design: `docs/backup-and-updates.md` §3. **Not yet implemented** — tracked in
   signing) is independent of this and works regardless.
 - Cloud backup: Dropbox only in v1; Google Drive is interface-complete but not implemented (see
   §11).
+- Cross-platform packaging: the release workflow builds all three platforms, and the Linux leg has
+  been verified locally (a real release build's `.deb` and `.AppImage` were produced and actually
+  launched, not just compiled) — Windows and macOS installers have not yet been verified installing
+  and launching on their real OS, since this project has so far only been developed and tested on
+  Linux. Verify those before publishing the first non-draft release.
 - Internationalization: the UI is English-only. An i18n scaffold exists (`apps/desktop/src/lib/i18n.tsx`)
   and is used for the navigation and Phase 5 screens, but the Phase 3/4 forms (raw materials,
   suppliers, recipes) have not been retrofitted to route their strings through it — that's a
