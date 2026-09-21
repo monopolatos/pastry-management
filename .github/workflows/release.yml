@@ -115,20 +115,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Only export the code-signing env vars when the corresponding secret is actually
+      # configured. Referencing `${{ secrets.X }}` directly in the build step's `env:` below would
+      # still set the variable (to an empty string) even when the secret doesn't exist — and the
+      # Tauri/macOS bundler treats "present but empty" as "a certificate was provided," then fails
+      # trying to import an empty blob into the keychain. Setting them via $GITHUB_ENV only inside
+      # a conditional step means they're genuinely absent, not just empty, when unconfigured.
+      - name: Configure optional Apple code-signing env
+        if: matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        run: |
+          echo "APPLE_CERTIFICATE=${{ secrets.APPLE_CERTIFICATE }}" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE_PASSWORD=${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "APPLE_SIGNING_IDENTITY=${{ secrets.APPLE_SIGNING_IDENTITY }}" >> "$GITHUB_ENV"
+          echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> "$GITHUB_ENV"
+          echo "APPLE_PASSWORD=${{ secrets.APPLE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> "$GITHUB_ENV"
+
+      - name: Configure optional Windows code-signing env
+        if: matrix.platform == 'windows-latest' && secrets.WINDOWS_CERTIFICATE != ''
+        run: |
+          echo "WINDOWS_CERTIFICATE=${{ secrets.WINDOWS_CERTIFICATE }}" >> "$env:GITHUB_ENV"
+          echo "WINDOWS_CERTIFICATE_PASSWORD=${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}" >> "$env:GITHUB_ENV"
+
       # --- Tag push: build and draft a GitHub Release ------------------------------------------
       - name: Build and draft release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         with:
           projectPath: ${{ env.TAURI_PROJECT_PATH }}
           tagName: ${{ github.ref_name }}
