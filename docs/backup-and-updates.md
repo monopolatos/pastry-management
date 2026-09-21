@@ -63,10 +63,11 @@ Dropbox cloud backup needs an app registered under **your own** Dropbox account 
 
 1. Go to <https://www.dropbox.com/developers/apps> and click **Create app**.
 2. Choose **Scoped access**, then **App folder** access (recommended — the app can only ever see one dedicated folder, e.g. "Apps/Pastry Management," never the rest of your Dropbox). Name the app anything you like.
-3. Under the app's **Permissions** tab, enable at minimum: `files.content.write`, `files.content.read`, and `account_info.read`. Save changes.
+3. Under the app's **Permissions** tab, enable at minimum: `files.content.write`, `files.content.read`, `files.metadata.read`, and `account_info.read`. Save changes. (`files.metadata.read` is easy to miss — it's what backs the "list backups in Dropbox" call, separate from the read/write scopes that cover the file content itself; without it, listing backups fails with a 400 "missing scope" error even though upload/download work fine.)
 4. Under the **Settings** tab, find **OAuth 2** → **Redirect URIs** and add `http://127.0.0.1/callback` (the app negotiates the actual loopback port at connect time, but Dropbox only lets you whitelist the host+path, not a specific port — this is expected and works with Dropbox's loopback-redirect support for installed apps).
 5. Copy the **App key** shown at the top of the Settings tab (not the App secret — this app never uses or needs it, since PKCE is specifically designed so installed apps don't ship a client secret).
 6. In Pastry Management, go to Backup & Restore → Dropbox settings, paste the App key, save, then click **Connect to Dropbox** — your browser opens to Dropbox's sign-in/approval page, and the app picks up the result automatically once you approve.
+7. If you change permissions on the Permissions tab *after* already connecting once, the existing connection won't retroactively gain the new scope — click **Disconnect** then **Connect to Dropbox** again in the app to re-approve with the updated permissions.
 
 ## 3. Automatic Update Strategy
 

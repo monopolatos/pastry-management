@@ -3,7 +3,10 @@
 //!
 //! Setup required before this can do anything real: a Dropbox app registered at
 //! <https://www.dropbox.com/developers/apps> with "App folder" access, the
-//! `files.content.write`/`files.content.read`/`account_info.read` scopes enabled, and
+//! `files.content.write`/`files.content.read`/`files.metadata.read`/`account_info.read` scopes
+//! enabled (the metadata scope is easy to miss — it's what `list` below needs, separate from the
+//! content scopes; without it `files/list_folder` fails with a 400 "missing scope" error even
+//! though upload/download work fine), and
 //! `http://127.0.0.1/callback` (loopback, any port — see `connect` below) allowed as a redirect
 //! URI. The resulting "App key" is a public OAuth client identifier (not a secret — PKCE is
 //! specifically designed so installed apps never need to embed a client secret), entered by the
