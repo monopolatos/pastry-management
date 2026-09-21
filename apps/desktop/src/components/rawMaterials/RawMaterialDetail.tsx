@@ -3,7 +3,13 @@ import { ArrowLeft } from "lucide-react";
 import { toAppError } from "../../api/errors";
 import { listPurchaseRecordsForMaterial } from "../../api/purchaseRecords";
 import { UNIT_LABELS } from "../../api/types";
-import type { BaseUnitCode, PurchaseRecord, RawMaterial, Supplier } from "../../api/types";
+import type {
+  BaseUnitCode,
+  Category,
+  PurchaseRecord,
+  RawMaterial,
+  Supplier,
+} from "../../api/types";
 import { PurchaseRecordForm } from "./PurchaseRecordForm";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -13,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 interface RawMaterialDetailProps {
   material: RawMaterial;
   suppliers: Supplier[];
+  categories: Category[];
   /** True right after this material was just created, so we can point the user at the purchase
    * form below — a raw material has no price of its own until a purchase is recorded. */
   justCreated?: boolean;
@@ -30,6 +37,7 @@ function formatMoney(micros: number, digits: number): string {
 export function RawMaterialDetail({
   material,
   suppliers,
+  categories,
   justCreated = false,
   onBack,
 }: RawMaterialDetailProps) {
@@ -43,6 +51,14 @@ export function RawMaterialDetail({
       return suppliers.find((s) => s.id === supplierId)?.name ?? `Supplier #${supplierId}`;
     },
     [suppliers],
+  );
+
+  const categoryName = useCallback(
+    (categoryId: number | null): string => {
+      if (categoryId === null) return "—";
+      return categories.find((c) => c.id === categoryId)?.name ?? `Category #${categoryId}`;
+    },
+    [categories],
   );
 
   const refresh = useCallback(() => {
@@ -87,7 +103,7 @@ export function RawMaterialDetail({
         <CardContent>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
             <dt className="font-medium text-muted-foreground">Category</dt>
-            <dd>{material.category ?? "—"}</dd>
+            <dd>{categoryName(material.category_id)}</dd>
             <dt className="font-medium text-muted-foreground">Base unit</dt>
             <dd>{unitLabel(material.base_unit_code)}</dd>
           </dl>

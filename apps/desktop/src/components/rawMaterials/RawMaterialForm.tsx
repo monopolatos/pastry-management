@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { toAppError } from "../../api/errors";
 import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABELS } from "../../api/types";
-import type { RawMaterial, RawMaterialInput, Supplier } from "../../api/types";
+import type { Category, RawMaterial, RawMaterialInput, Supplier } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -22,9 +23,10 @@ export interface InitialPurchaseInput {
 interface RawMaterialFormProps {
   initial?: RawMaterial;
   suppliers: Supplier[];
-  /** Existing category values across all materials, offered as a picker (see `<datalist>` below)
-   * so categories stay consistent without needing a separate categories table/CRUD screen. */
-  categories: string[];
+  categories: Category[];
+  /** Creates a new category (used by the inline "+ Add new category" option below) and returns
+   * it, so the caller's category list refreshes and this form can select it immediately. */
+  onCreateCategory: (name: string) => Promise<Category>;
   onSubmit: (
     input: RawMaterialInput,
     initialPurchase: InitialPurchaseInput | null,
@@ -32,7 +34,8 @@ interface RawMaterialFormProps {
   onCancel: () => void;
 }
 
-const KNOWN_FIELDS = ["name", "base_unit_code", "default_supplier_id"] as const;
+const KNOWN_FIELDS = ["name", "base_unit_code", "default_supplier_id", "category_id"] as const;
+const ADD_NEW_CATEGORY_VALUE = "__add_new_category__";
 
 /**
  * The pricing strategy field exists in the schema (docs/database-schema.md) for the costing engine
@@ -57,12 +60,19 @@ export function RawMaterialForm({
   initial,
   suppliers,
   categories,
+  onCreateCategory,
   onSubmit,
   onCancel,
 }: RawMaterialFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [category, setCategory] = useState(initial?.category ?? "");
+  const [categoryId, setCategoryId] = useState<string>(
+    initial?.category_id != null ? String(initial.category_id) : "",
+  );
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryError, setNewCategoryError] = useState<string | null>(null);
   const [baseUnitCode, setBaseUnitCode] = useState(initial?.base_unit_code ?? BASE_UNIT_CODES[0]);
   const [defaultSupplierId, setDefaultSupplierId] = useState<string>(
     initial?.default_supplier_id != null ? String(initial.default_supplier_id) : "",
@@ -91,6 +101,30 @@ export function RawMaterialForm({
     const kind = UNIT_KINDS[code as (typeof BASE_UNIT_CODES)[number]];
     if (kind && UNIT_KINDS[purchaseUnitCode as (typeof BASE_UNIT_CODES)[number]] !== kind) {
       setPurchaseUnitCode(code);
+    }
+  }
+
+  function handleCategorySelectChange(value: string) {
+    if (value === ADD_NEW_CATEGORY_VALUE) {
+      setShowNewCategoryInput(true);
+      return;
+    }
+    setCategoryId(value === NONE_VALUE ? "" : value);
+  }
+
+  async function handleCreateCategory() {
+    if (newCategoryName.trim() === "") return;
+    setCreatingCategory(true);
+    setNewCategoryError(null);
+    try {
+      const created = await onCreateCategory(newCategoryName.trim());
+      setCategoryId(String(created.id));
+      setNewCategoryName("");
+      setShowNewCategoryInput(false);
+    } catch (err) {
+      setNewCategoryError(toAppError(err).message);
+    } finally {
+      setCreatingCategory(false);
     }
   }
 
@@ -136,7 +170,7 @@ export function RawMaterialForm({
         {
           name: name.trim(),
           description: emptyToNull(description),
-          category: emptyToNull(category),
+          category_id: categoryId === "" ? null : Number(categoryId),
           base_unit_code: baseUnitCode,
           default_supplier_id: defaultSupplierId === "" ? null : Number(defaultSupplierId),
           pricing_strategy: initial?.pricing_strategy ?? DEFAULT_PRICING_STRATEGY,
@@ -183,22 +217,58 @@ export function RawMaterialForm({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="material-category">Category</Label>
-        <Input
-          id="material-category"
-          type="text"
-          list="material-category-options"
-          placeholder="e.g. Dry goods, Dairy, Fruit…"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        />
-        <datalist id="material-category-options">
-          {categories.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-        <p className="text-xs text-muted-foreground">
-          Pick an existing category or type a new one.
-        </p>
+        <Select
+          value={categoryId === "" ? NONE_VALUE : categoryId}
+          onValueChange={handleCategorySelectChange}
+        >
+          <SelectTrigger id="material-category" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE_VALUE}>(none)</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+            <SelectItem value={ADD_NEW_CATEGORY_VALUE}>+ Add new category…</SelectItem>
+          </SelectContent>
+        </Select>
+        {formError.fieldError("category_id") && (
+          <p className="text-sm text-destructive">{formError.fieldError("category_id")}</p>
+        )}
+
+        {showNewCategoryInput && (
+          <div className="flex items-end gap-2 rounded-lg border p-2">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="material-new-category">New category name</Label>
+              <Input
+                id="material-new-category"
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                autoFocus
+              />
+              {newCategoryError && <p className="text-sm text-destructive">{newCategoryError}</p>}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleCreateCategory}
+              disabled={creatingCategory}
+            >
+              {creatingCategory ? "Adding…" : "Add"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setShowNewCategoryInput(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">

@@ -4,6 +4,7 @@ mod cloud;
 mod commands;
 mod db;
 mod error;
+mod import;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -226,6 +227,14 @@ pub fn run() {
             commands::updates::download_update,
             commands::updates::install_update,
             commands::updates::restart_app,
+            commands::categories::list_categories,
+            commands::categories::create_category,
+            commands::categories::update_category,
+            commands::categories::archive_category,
+            commands::categories::reactivate_category,
+            commands::categories::delete_category,
+            commands::import::choose_excel_file,
+            commands::import::import_from_excel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

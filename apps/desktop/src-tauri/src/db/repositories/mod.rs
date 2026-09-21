@@ -1,4 +1,5 @@
 pub mod backup_settings;
+pub mod categories;
 pub mod dropbox_settings;
 pub mod measurement_units;
 pub mod purchase_records;

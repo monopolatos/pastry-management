@@ -41,6 +41,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "update_settings",
         include_str!("../../migrations/0006_update_settings.sql"),
     ),
+    (
+        7,
+        "categories",
+        include_str!("../../migrations/0007_categories.sql"),
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -236,7 +241,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 6);
+        assert_eq!(applied, 7);
 
         drop(conn);
         let _ = fs::remove_file(&path);
@@ -256,7 +261,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 6, "migrations should not be re-applied");
+        assert_eq!(applied, 7, "migrations should not be re-applied");
 
         drop(conn);
         let _ = fs::remove_file(&path);

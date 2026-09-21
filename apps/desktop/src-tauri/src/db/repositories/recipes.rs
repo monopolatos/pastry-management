@@ -883,6 +883,8 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../../../migrations/0003_recipes.sql"))
             .unwrap();
+        conn.execute_batch(include_str!("../../../migrations/0007_categories.sql"))
+            .unwrap();
         conn
     }
 
@@ -892,7 +894,7 @@ mod tests {
             raw_materials::RawMaterialInput {
                 name: "Flour".into(),
                 description: None,
-                category: None,
+                category_id: None,
                 base_unit_code: "g".into(),
                 default_supplier_id: None,
                 pricing_strategy: "latest".into(),

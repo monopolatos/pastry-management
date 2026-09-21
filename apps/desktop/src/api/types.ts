@@ -50,7 +50,7 @@ export interface RawMaterial {
   id: number;
   name: string;
   description: string | null;
-  category: string | null;
+  category_id: number | null;
   base_unit_code: string;
   default_supplier_id: number | null;
   pricing_strategy: PricingStrategy;
@@ -64,7 +64,7 @@ export interface RawMaterial {
 export interface RawMaterialInput {
   name: string;
   description: string | null;
-  category: string | null;
+  category_id: number | null;
   base_unit_code: string;
   default_supplier_id: number | null;
   pricing_strategy: PricingStrategy;
@@ -344,4 +344,31 @@ export interface UpdateCheckResult {
   current_version: string | null;
   version: string | null;
   notes: string | null;
+}
+
+/**
+ * `commands::categories` (see src-tauri/src/db/repositories/categories.rs's `Category` struct).
+ * Raw material categories are a managed entity (archive-over-delete, like suppliers), not free
+ * text — `raw_materials.category_id` references these by id.
+ */
+export interface Category {
+  id: number;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryInput {
+  name: string;
+}
+
+/** `commands::import::import_from_excel`'s `ImportSummary`. */
+export interface ImportSummary {
+  categories_created: string[];
+  categories_already_existed: string[];
+  products_created: string[];
+  products_skipped_existing: string[];
+  /** `"<row name>: <reason>"` for a row that couldn't be created at all. */
+  products_skipped_invalid: string[];
 }

@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
+import * as categoriesApi from "../../api/categories";
 import { toAppError } from "../../api/errors";
 import * as rawMaterialsApi from "../../api/rawMaterials";
 import { createPurchaseRecord } from "../../api/purchaseRecords";
 import { listSuppliers } from "../../api/suppliers";
 import { UNIT_LABELS } from "../../api/types";
-import type { BaseUnitCode, RawMaterial, RawMaterialInput, Supplier } from "../../api/types";
+import type {
+  BaseUnitCode,
+  Category,
+  RawMaterial,
+  RawMaterialInput,
+  Supplier,
+} from "../../api/types";
+import { CategoriesDialog } from "./CategoriesDialog";
+import { ImportDialog } from "./ImportDialog";
 import { RawMaterialDetail } from "./RawMaterialDetail";
 import { RawMaterialForm } from "./RawMaterialForm";
 import type { InitialPurchaseInput } from "./RawMaterialForm";
@@ -35,6 +44,7 @@ function unitLabel(code: string): string {
 export function RawMaterialsScreen() {
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -42,19 +52,22 @@ export function RawMaterialsScreen() {
   const [rowError, setRowError] = useState<string | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
   const [justCreated, setJustCreated] = useState(false);
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
 
   const refresh = useCallback(() => {
     setLoading(true);
     setLoadError(null);
     Promise.all([
       rawMaterialsApi.listRawMaterials(includeInactive),
-      // Include inactive suppliers too, so historical purchase records (which may reference an
-      // archived supplier) can still resolve a display name.
+      // Include inactive suppliers/categories too, so historical records (which may reference an
+      // archived one) can still resolve a display name.
       listSuppliers(true),
+      categoriesApi.listCategories(true),
     ])
-      .then(([materialsResult, suppliersResult]) => {
+      .then(([materialsResult, suppliersResult, categoriesResult]) => {
         setMaterials(materialsResult);
         setSuppliers(suppliersResult);
+        setCategories(categoriesResult);
       })
       .catch((err) => setLoadError(toAppError(err).message))
       .finally(() => setLoading(false));
@@ -63,6 +76,23 @@ export function RawMaterialsScreen() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const categoryName = useCallback(
+    (categoryId: number | null): string => {
+      if (categoryId === null) return "—";
+      return categories.find((c) => c.id === categoryId)?.name ?? `Category #${categoryId}`;
+    },
+    [categories],
+  );
+
+  async function handleCreateCategory(name: string): Promise<Category> {
+    const created = await categoriesApi.createCategory({ name });
+    // Optimistic append so a category picker mid-render (e.g. inside RawMaterialForm) can select
+    // it immediately, without waiting for the full `refresh()` round-trip below to land.
+    setCategories((current) => [...current, created]);
+    refresh();
+    return created;
+  }
 
   async function handleCreate(
     input: RawMaterialInput,
@@ -120,6 +150,7 @@ export function RawMaterialsScreen() {
       <RawMaterialDetail
         material={selectedMaterial}
         suppliers={suppliers}
+        categories={categories}
         justCreated={justCreated}
         onBack={() => {
           setSelectedMaterial(null);
@@ -131,9 +162,7 @@ export function RawMaterialsScreen() {
   }
 
   const activeSuppliers = suppliers.filter((s) => s.is_active);
-  const categories = Array.from(
-    new Set(materials.map((m) => m.category).filter((c): c is string => !!c)),
-  ).sort((a, b) => a.localeCompare(b));
+  const activeCategories = categories.filter((c) => c.is_active);
 
   return (
     <section className="flex flex-col gap-4">
@@ -147,11 +176,22 @@ export function RawMaterialsScreen() {
             />
             Show inactive
           </Label>
+          <Button type="button" variant="outline" onClick={() => setCategoriesDialogOpen(true)}>
+            Manage categories
+          </Button>
+          <ImportDialog onImported={refresh} />
           <Button type="button" onClick={() => setPanel({ mode: "create" })}>
             Add raw material
           </Button>
         </div>
       </div>
+
+      <CategoriesDialog
+        open={categoriesDialogOpen}
+        onOpenChange={setCategoriesDialogOpen}
+        categories={categories}
+        onChanged={refresh}
+      />
 
       {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
@@ -164,7 +204,8 @@ export function RawMaterialsScreen() {
           <CardContent>
             <RawMaterialForm
               suppliers={activeSuppliers}
-              categories={categories}
+              categories={activeCategories}
+              onCreateCategory={handleCreateCategory}
               onSubmit={handleCreate}
               onCancel={() => setPanel({ mode: "closed" })}
             />
@@ -181,7 +222,8 @@ export function RawMaterialsScreen() {
             <RawMaterialForm
               initial={panel.material}
               suppliers={activeSuppliers}
-              categories={categories}
+              categories={activeCategories}
+              onCreateCategory={handleCreateCategory}
               onSubmit={(input) => handleUpdate(panel.material.id, input)}
               onCancel={() => setPanel({ mode: "closed" })}
             />
@@ -218,7 +260,7 @@ export function RawMaterialsScreen() {
                       {material.name}
                     </Button>
                   </TableCell>
-                  <TableCell>{material.category ?? "—"}</TableCell>
+                  <TableCell>{categoryName(material.category_id)}</TableCell>
                   <TableCell>{unitLabel(material.base_unit_code)}</TableCell>
                   <TableCell>
                     <Badge variant={material.is_active ? "default" : "secondary"}>

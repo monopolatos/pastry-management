@@ -29,11 +29,17 @@ suppliers
   is_active INTEGER NOT NULL DEFAULT 1
   created_at, updated_at TEXT
 
+categories                           -- raw material categories (migration 0007) — a managed
+  id INTEGER PK                      -- entity, not free text, so a starting list can be
+  name TEXT NOT NULL COLLATE NOCASE UNIQUE  -- preselected (e.g. via Excel import) and the user
+  is_active INTEGER NOT NULL DEFAULT 1      -- can still add their own. Archive-over-delete, like
+  created_at, updated_at TEXT               -- suppliers.
+
 raw_materials
   id INTEGER PK
   name TEXT NOT NULL
   description TEXT
-  category TEXT
+  category_id INTEGER REFERENCES categories(id)
   base_unit_code TEXT NOT NULL REFERENCES measurement_units(code)
   default_supplier_id INTEGER REFERENCES suppliers(id)
   pricing_strategy TEXT NOT NULL DEFAULT 'latest'   -- 'latest' | 'average_n' | 'manual'
@@ -132,4 +138,6 @@ app_settings
 
 **Cycle prevention at the schema/service boundary:** before inserting/updating a `recipe_ingredients` row with `ingredient_type='recipe'`, the repository runs a DFS from the _target_ sub-recipe to check whether the _owning_ recipe appears anywhere in its (existing) ingredient graph; if so the write is rejected with a descriptive error naming the cycle path. This is enforced in the Rust command handler, not just the UI, so it can't be bypassed.
 
-**Deletion policy:** raw materials, suppliers, and recipes are never hard-deleted while referenced by purchase history or recipe versions — `is_active=0` / `status='archived'` is used instead. Hard delete is only permitted for records with zero references (enforced by FK `ON DELETE RESTRICT`).
+**Deletion policy:** raw materials, suppliers, recipes, and categories are never hard-deleted while referenced by purchase history, recipe versions, or (for categories) any raw material — `is_active=0` / `status='archived'` is used instead. Hard delete is only permitted for records with zero references (enforced by FK `ON DELETE RESTRICT`).
+
+**Excel import:** `commands::import::import_from_excel` (Rust: `src-tauri/src/import/mod.rs`) bulk-creates categories and raw materials from a two-sheet `.xlsx` workbook — sheet index 0 (a header row, then name/category/price-€-per-kg/comments columns; a waste-% column is read but intentionally not imported) is products, sheet index 1 (no header, one name per row) is categories. Both sheets are read by position, not by name, so the importer isn't tied to any particular workbook's sheet-naming convention. Every imported raw material gets `base_unit_code='kg'` (the sheet's price column is always €/kg) and, when a price is present, an initial `purchase_records` row (quantity 1kg, no supplier, dated the import date) — raw materials don't store price directly, so this is what gives an imported material a working cost immediately. Import is best-effort and idempotent: a row matching an existing raw material name (case-insensitively) or category name is left untouched rather than duplicated, and one malformed row is skipped and reported rather than aborting the rest.

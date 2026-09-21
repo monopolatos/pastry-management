@@ -13,7 +13,7 @@ pub struct RawMaterial {
     pub id: i64,
     pub name: String,
     pub description: Option<String>,
-    pub category: Option<String>,
+    pub category_id: Option<i64>,
     pub base_unit_code: String,
     pub default_supplier_id: Option<i64>,
     pub pricing_strategy: String,
@@ -28,7 +28,7 @@ pub struct RawMaterial {
 pub struct RawMaterialInput {
     pub name: String,
     pub description: Option<String>,
-    pub category: Option<String>,
+    pub category_id: Option<i64>,
     pub base_unit_code: String,
     pub default_supplier_id: Option<i64>,
     pub pricing_strategy: String,
@@ -83,6 +83,22 @@ fn validate(conn: &Connection, input: &RawMaterialInput) -> AppResult<()> {
         }
     }
 
+    if let Some(category_id) = input.category_id {
+        let category_exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM categories WHERE id = ?1",
+                [category_id],
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|c| c > 0)?;
+        if !category_exists {
+            return Err(AppError::field(
+                "category_id",
+                "Selected category does not exist.",
+            ));
+        }
+    }
+
     Ok(())
 }
 
@@ -91,7 +107,7 @@ fn map_row(row: &rusqlite::Row) -> rusqlite::Result<RawMaterial> {
         id: row.get(0)?,
         name: row.get(1)?,
         description: row.get(2)?,
-        category: row.get(3)?,
+        category_id: row.get(3)?,
         base_unit_code: row.get(4)?,
         default_supplier_id: row.get(5)?,
         pricing_strategy: row.get(6)?,
@@ -104,7 +120,7 @@ fn map_row(row: &rusqlite::Row) -> rusqlite::Result<RawMaterial> {
 }
 
 const SELECT_COLUMNS: &str =
-    "id, name, description, category, base_unit_code, default_supplier_id, \
+    "id, name, description, category_id, base_unit_code, default_supplier_id, \
      pricing_strategy, pricing_strategy_config, notes, is_active, created_at, updated_at";
 
 pub fn list(conn: &Connection, include_inactive: bool) -> AppResult<Vec<RawMaterial>> {
@@ -116,6 +132,19 @@ pub fn list(conn: &Connection, include_inactive: bool) -> AppResult<Vec<RawMater
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], map_row)?;
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
+}
+
+/// Case-insensitive name lookup (`name` has no `COLLATE NOCASE` at the schema level like
+/// `categories.name` does, so the collation is specified per-query here instead). Used by
+/// `commands::import` to skip re-creating a raw material that already exists under the same name.
+pub fn find_by_name(conn: &Connection, name: &str) -> AppResult<Option<RawMaterial>> {
+    Ok(conn
+        .query_row(
+            &format!("SELECT {SELECT_COLUMNS} FROM raw_materials WHERE name = ?1 COLLATE NOCASE"),
+            [name.trim()],
+            map_row,
+        )
+        .optional()?)
 }
 
 pub fn get(conn: &Connection, id: i64) -> AppResult<RawMaterial> {
@@ -132,13 +161,13 @@ pub fn create(conn: &Connection, input: RawMaterialInput) -> AppResult<RawMateri
     validate(conn, &input)?;
     conn.execute(
         "INSERT INTO raw_materials
-            (name, description, category, base_unit_code, default_supplier_id,
+            (name, description, category_id, base_unit_code, default_supplier_id,
              pricing_strategy, pricing_strategy_config, notes)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             input.name.trim(),
             input.description,
-            input.category,
+            input.category_id,
             input.base_unit_code,
             input.default_supplier_id,
             input.pricing_strategy,
@@ -153,14 +182,14 @@ pub fn update(conn: &Connection, id: i64, input: RawMaterialInput) -> AppResult<
     validate(conn, &input)?;
     let affected = conn.execute(
         "UPDATE raw_materials
-         SET name = ?1, description = ?2, category = ?3, base_unit_code = ?4, default_supplier_id = ?5,
+         SET name = ?1, description = ?2, category_id = ?3, base_unit_code = ?4, default_supplier_id = ?5,
              pricing_strategy = ?6, pricing_strategy_config = ?7, notes = ?8,
              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
          WHERE id = ?9",
         params![
             input.name.trim(),
             input.description,
-            input.category,
+            input.category_id,
             input.base_unit_code,
             input.default_supplier_id,
             input.pricing_strategy,
@@ -216,6 +245,8 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../../../migrations/0002_core_data.sql"))
             .unwrap();
+        conn.execute_batch(include_str!("../../../migrations/0007_categories.sql"))
+            .unwrap();
         conn
     }
 
@@ -223,7 +254,7 @@ mod tests {
         RawMaterialInput {
             name: "Flour".into(),
             description: None,
-            category: Some("Dry goods".into()),
+            category_id: None,
             base_unit_code: "g".into(),
             default_supplier_id: None,
             pricing_strategy: "latest".into(),
@@ -269,6 +300,33 @@ mod tests {
     }
 
     #[test]
+    fn create_rejects_nonexistent_category() {
+        let conn = test_conn();
+        let mut input = valid_input();
+        input.category_id = Some(999);
+        let err = create(&conn, input).unwrap_err();
+        assert_eq!(err.field.as_deref(), Some("category_id"));
+    }
+
+    #[test]
+    fn create_accepts_an_existing_category() {
+        use crate::db::repositories::categories;
+        let conn = test_conn();
+        let category = categories::create(
+            &conn,
+            categories::CategoryInput {
+                name: "Dry Goods".into(),
+            },
+        )
+        .unwrap();
+
+        let mut input = valid_input();
+        input.category_id = Some(category.id);
+        let created = create(&conn, input).unwrap();
+        assert_eq!(created.category_id, Some(category.id));
+    }
+
+    #[test]
     fn create_and_get_round_trip() {
         let conn = test_conn();
         let created = create(&conn, valid_input()).unwrap();
@@ -277,6 +335,17 @@ mod tests {
 
         let fetched = get(&conn, created.id).unwrap();
         assert_eq!(fetched.id, created.id);
+    }
+
+    #[test]
+    fn find_by_name_is_case_insensitive() {
+        let conn = test_conn();
+        let created = create(&conn, valid_input()).unwrap();
+
+        let found = find_by_name(&conn, "flour").unwrap();
+        assert_eq!(found.map(|m| m.id), Some(created.id));
+
+        assert!(find_by_name(&conn, "sugar").unwrap().is_none());
     }
 
     #[test]
