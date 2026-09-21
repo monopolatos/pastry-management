@@ -154,7 +154,7 @@ export function SuppliersScreen() {
                   <TableCell>{supplier.phone ?? "—"}</TableCell>
                   <TableCell>{supplier.email ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={supplier.is_active ? "default" : "secondary"}>
+                    <Badge variant={supplier.is_active ? "success" : "destructive"}>
                       {supplier.is_active ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>

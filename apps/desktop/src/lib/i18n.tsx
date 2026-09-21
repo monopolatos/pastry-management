@@ -185,6 +185,15 @@ const en = {
   "settings.currencyNote":
     "The app currently assumes EUR throughout. Multi-currency support may be added in a future update.",
 
+  "settings.themeEditor": "Color Customization",
+  "settings.themeEditorHint":
+    "Pick your own colors for the app's background, text, and labels. These are saved on this device and apply on top of the theme above, in both light and dark mode.",
+  "settings.themeEditorBackground": "Background",
+  "settings.themeEditorText": "Text",
+  "settings.themeEditorLabels": "Labels",
+  "settings.themeEditorReset": "Reset to defaults",
+  "settings.themeEditorResetSuccess": "Colors reset to default.",
+
   "settings.updates": "Updates",
   "settings.updatesCurrentVersion": "Current version",
   "settings.updatesAutoCheck": "Automatically check for updates",
@@ -515,6 +524,15 @@ const el: Record<keyof typeof en, string> = {
   "settings.currency": "Νόμισμα",
   "settings.currencyNote":
     "Η εφαρμογή προϋποθέτει προς το παρόν EUR παντού. Υποστήριξη πολλαπλών νομισμάτων ενδέχεται να προστεθεί σε μελλοντική ενημέρωση.",
+
+  "settings.themeEditor": "Προσαρμογή Χρωμάτων",
+  "settings.themeEditorHint":
+    "Επιλέξτε τα δικά σας χρώματα για το φόντο, το κείμενο και τις ετικέτες της εφαρμογής. Αποθηκεύονται σε αυτή τη συσκευή και εφαρμόζονται πάνω από το θέμα παραπάνω, τόσο σε φωτεινή όσο και σε σκοτεινή λειτουργία.",
+  "settings.themeEditorBackground": "Φόντο",
+  "settings.themeEditorText": "Κείμενο",
+  "settings.themeEditorLabels": "Ετικέτες",
+  "settings.themeEditorReset": "Επαναφορά προεπιλογών",
+  "settings.themeEditorResetSuccess": "Τα χρώματα επαναφέρθηκαν στα προεπιλεγμένα.",
 
   "settings.updates": "Ενημερώσεις",
   "settings.updatesCurrentVersion": "Τρέχουσα έκδοση",

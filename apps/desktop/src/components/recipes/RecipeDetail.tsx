@@ -123,7 +123,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
       <div className="flex items-center gap-3">
         <h2 className="font-heading text-xl font-semibold">{recipe.name}</h2>
-        <Badge variant={recipe.status === "active" ? "default" : "secondary"}>
+        <Badge variant={recipe.status === "active" ? "success" : "destructive"}>
           {recipe.status === "active" ? t("common.active") : t("common.archived")}
         </Badge>
       </div>

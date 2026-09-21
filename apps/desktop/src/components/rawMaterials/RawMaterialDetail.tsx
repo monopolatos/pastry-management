@@ -92,7 +92,7 @@ export function RawMaterialDetail({
 
       <div className="flex items-center gap-3">
         <h2 className="font-heading text-xl font-semibold">{material.name}</h2>
-        <Badge variant={material.is_active ? "default" : "secondary"}>
+        <Badge variant={material.is_active ? "success" : "destructive"}>
           {material.is_active ? t("common.active") : t("common.archived")}
         </Badge>
       </div>

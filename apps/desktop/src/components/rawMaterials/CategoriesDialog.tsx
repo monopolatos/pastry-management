@@ -157,7 +157,7 @@ export function CategoriesDialog({
                   <TableRow key={category.id}>
                     <TableCell>{category.name}</TableCell>
                     <TableCell>
-                      <Badge variant={category.is_active ? "default" : "secondary"}>
+                      <Badge variant={category.is_active ? "success" : "destructive"}>
                         {category.is_active ? t("common.active") : t("common.archived")}
                       </Badge>
                     </TableCell>

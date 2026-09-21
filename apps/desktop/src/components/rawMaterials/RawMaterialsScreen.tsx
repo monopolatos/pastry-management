@@ -268,7 +268,7 @@ export function RawMaterialsScreen() {
                   <TableCell>{categoryName(material.category_id)}</TableCell>
                   <TableCell>{unitLabel(material.base_unit_code)}</TableCell>
                   <TableCell>
-                    <Badge variant={material.is_active ? "default" : "secondary"}>
+                    <Badge variant={material.is_active ? "success" : "destructive"}>
                       {material.is_active ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>

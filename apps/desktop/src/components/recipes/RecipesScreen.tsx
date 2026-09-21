@@ -254,7 +254,7 @@ export function RecipesScreen() {
                     {recipe.yield_quantity} {unitLabel(units, recipe.yield_unit_code)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={recipe.status === "active" ? "default" : "secondary"}>
+                    <Badge variant={recipe.status === "active" ? "success" : "destructive"}>
                       {recipe.status === "active" ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>

@@ -4,6 +4,7 @@ import type { Locale } from "../../lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { ThemeEditorCard } from "./ThemeEditorCard";
 import { UpdatesCard } from "./UpdatesCard";
 
 const LOCALE_LABELS: Record<Locale, string> = {
@@ -52,6 +53,8 @@ export function SettingsScreen() {
           <p className="text-sm text-muted-foreground">{t("settings.languageNote")}</p>
         </CardContent>
       </Card>
+
+      <ThemeEditorCard />
 
       <Card>
         <CardHeader>
