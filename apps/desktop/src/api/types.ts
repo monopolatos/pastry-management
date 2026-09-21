@@ -280,3 +280,41 @@ export interface ValidatedBackup {
   schema_version: number;
   created_at: string;
 }
+
+/**
+ * `commands::cloud_backup` (see src-tauri/src/db/repositories/dropbox_settings.rs's
+ * `DropboxSettings` struct). A single `destination_type = 'dropbox'` settings row, created lazily
+ * with sensible defaults on first access, mirroring `BackupSettings` (local) above. The Dropbox
+ * refresh token itself is never part of this DTO — it lives only in the OS keyring, never in the
+ * database or serialized to the frontend (see cloud/mod.rs and docs/backup-and-updates.md §2).
+ */
+export interface DropboxSettings {
+  id: number;
+  app_key: string | null;
+  cloud_account_label: string | null;
+  auto_backup_enabled: boolean;
+  auto_backup_frequency: AutoBackupFrequency | null;
+  retention_count: number;
+}
+
+export interface DropboxSettingsInput {
+  /** `null` leaves the current app_key unchanged (mirrors `BackupSettingsInput.local_path`). */
+  app_key: string | null;
+  auto_backup_enabled: boolean;
+  auto_backup_frequency: AutoBackupFrequency | null;
+  retention_count: number;
+}
+
+/** `commands::cloud_backup`'s `DropboxStatus` — settings plus whether a refresh token is stored. */
+export interface DropboxStatus {
+  settings: DropboxSettings;
+  is_connected: boolean;
+}
+
+/** `cloud::RemoteBackupHandle`. `id` is provider-specific (Dropbox's own path) — treat as opaque. */
+export interface RemoteBackupHandle {
+  id: string;
+  name: string;
+  size_bytes: number;
+  modified_at: string;
+}

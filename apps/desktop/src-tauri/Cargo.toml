@@ -31,6 +31,12 @@ chrono = { version = "0.4", features = ["serde"] }
 zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
 sha2 = "0.11.0"
 tauri-plugin-dialog = "2.7.3"
+reqwest = { version = "0.13.5", features = ["form", "json"] }
+async-trait = "0.1.92"
+keyring = { version = "4.2.0", features = ["apple-native-keyring-store"] }
+base64 = "0.23.1"
+rand = "0.10.3"
+tokio = { version = "1.53.1", features = ["fs", "time", "rt", "macros"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -40,3 +46,6 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+[dev-dependencies]
+mockito = "1.7.2"

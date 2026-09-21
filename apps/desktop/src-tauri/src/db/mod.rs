@@ -31,6 +31,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "backup_settings",
         include_str!("../../migrations/0004_backup_settings.sql"),
     ),
+    (
+        5,
+        "dropbox_settings",
+        include_str!("../../migrations/0005_dropbox_settings.sql"),
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -226,7 +231,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 4);
+        assert_eq!(applied, 5);
 
         drop(conn);
         let _ = fs::remove_file(&path);
@@ -246,7 +251,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 4, "migrations should not be re-applied");
+        assert_eq!(applied, 5, "migrations should not be re-applied");
 
         drop(conn);
         let _ = fs::remove_file(&path);

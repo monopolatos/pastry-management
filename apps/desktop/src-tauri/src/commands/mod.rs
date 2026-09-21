@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod backup;
+pub mod cloud_backup;
 pub mod measurement_units;
 pub mod purchase_records;
 pub mod raw_materials;

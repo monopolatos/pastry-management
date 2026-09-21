@@ -111,8 +111,12 @@ in Phases 6-7.
 ## 11. Cloud Integration Configuration
 
 Dropbox is the only fully-implemented cloud provider in v1 (PKCE OAuth, no client secret shipped
-in the app). Google Drive's provider interface exists but is intentionally left unimplemented
-pending a verified Google Cloud OAuth consent screen — see `docs/backup-and-updates.md` §2 for why.
+in the app — see `docs/backup-and-updates.md` §2a for the implementation and §2b for the exact
+setup steps). Cloud backup requires registering your own free Dropbox app and entering its App Key
+in Backup & Restore → Dropbox settings before connecting — there is no shared/default app key
+baked into this project. Google Drive's provider interface exists but is intentionally left
+unimplemented pending a verified Google Cloud OAuth consent screen — see `docs/backup-and-updates.md`
+§2 for why.
 
 ## 12. Automatic Updates
 

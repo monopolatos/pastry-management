@@ -47,6 +47,27 @@ trait BackupStorageProvider {
 - **Google Drive: interface-complete, integration deferred (decided).** Implementing it well requires a verified Google Cloud OAuth consent screen (a manual, account-specific process on Google's side that can't be completed inside this codebase), so shipping a "fake-functional" version would violate the explicit instruction not to pretend a provider works. The trait and UI provider-picker are built to accept it as a drop-in once that registration exists.
 - **Distinction maintained per requirement §17:** this is backup (point-in-time upload of a zip a user explicitly or on-schedule triggers), not sync — there is no bidirectional merge, conflict resolution, or multi-device live state sharing in v1.
 
+### 2a. Implementation Notes (Phase 7)
+
+Implemented in `apps/desktop/src-tauri/src/cloud/` (`mod.rs` for the trait + OS keyring helpers, `dropbox.rs` for the PKCE flow and API client) — 16 passing Rust tests, including a known-good RFC 7636 PKCE test vector and mocked-HTTP-server tests (via `mockito`) exercising the real upload/list/download/delete/retry/auth-failure request-and-response handling without needing live Dropbox credentials in CI.
+
+- **`authenticate` is not a trait method.** The original sketch above put it on `BackupStorageProvider`, but constructing a working provider instance already requires a valid token — "authenticate" necessarily happens _before_ a provider exists, not as an operation _on_ one. The one-time interactive OAuth flow is a standalone function, `dropbox::connect(app_handle, app_key) -> DropboxAccountInfo`, called once from the "Connect to Dropbox" UI action; the trait itself only covers the four data operations.
+- **Loopback OAuth redirect, no client secret.** `connect` opens the system browser to Dropbox's authorize page with a PKCE challenge, binds a `TcpListener` on an OS-assigned free `127.0.0.1` port as the redirect URI, and parses the one resulting browser request directly (no general-purpose HTTP server dependency) for `?code=...&state=...`, verifying `state` to guard against a forged callback.
+- **Access tokens are never cached.** Every operation exchanges the stored refresh token for a fresh access token first. Backups are infrequent, so the extra round trip per operation is a fine trade for not tracking token expiry.
+- **Cloud restore reuses local restore exactly.** `dropbox_restore_backup` downloads the archive to a temp file and hands it to the same `backup::restore_backup` local restores use — full checksum/schema validation, an automatic pre-restore safety backup, and the atomic live-database swap, with zero duplicated restore logic between "local" and "cloud."
+- **Setup required before this does anything real** — see §2b. Without a registered Dropbox app, `dropbox_connect` fails with a clear "set your App Key first" error; nothing pretends to work without configuration.
+
+### 2b. Setting Up Your Own Dropbox App (required before connecting)
+
+Dropbox cloud backup needs an app registered under **your own** Dropbox account — there's no shared/default app key baked into this project, since anyone self-hosting this app should control their own Dropbox app registration and permissions.
+
+1. Go to <https://www.dropbox.com/developers/apps> and click **Create app**.
+2. Choose **Scoped access**, then **App folder** access (recommended — the app can only ever see one dedicated folder, e.g. "Apps/Pastry Management," never the rest of your Dropbox). Name the app anything you like.
+3. Under the app's **Permissions** tab, enable at minimum: `files.content.write`, `files.content.read`, and `account_info.read`. Save changes.
+4. Under the **Settings** tab, find **OAuth 2** → **Redirect URIs** and add `http://127.0.0.1/callback` (the app negotiates the actual loopback port at connect time, but Dropbox only lets you whitelist the host+path, not a specific port — this is expected and works with Dropbox's loopback-redirect support for installed apps).
+5. Copy the **App key** shown at the top of the Settings tab (not the App secret — this app never uses or needs it, since PKCE is specifically designed so installed apps don't ship a client secret).
+6. In Pastry Management, go to Backup & Restore → Dropbox settings, paste the App key, save, then click **Connect to Dropbox** — your browser opens to Dropbox's sign-in/approval page, and the app picks up the result automatically once you approve.
+
 ## 3. Automatic Update Strategy
 
 - **Mechanism:** `tauri-plugin-updater`, checking a `latest.json` manifest published alongside each GitHub Release by the release workflow.

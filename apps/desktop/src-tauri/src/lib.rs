@@ -1,5 +1,6 @@
 mod auth;
 mod backup;
+mod cloud;
 mod commands;
 mod db;
 mod error;
@@ -143,6 +144,15 @@ pub fn run() {
             commands::backup::validate_backup_file,
             commands::backup::restore_backup,
             commands::backup::delete_backup,
+            commands::cloud_backup::get_dropbox_settings,
+            commands::cloud_backup::update_dropbox_settings,
+            commands::cloud_backup::dropbox_connect,
+            commands::cloud_backup::dropbox_disconnect,
+            commands::cloud_backup::dropbox_test_connection,
+            commands::cloud_backup::dropbox_upload_backup,
+            commands::cloud_backup::dropbox_list_backups,
+            commands::cloud_backup::dropbox_delete_backup,
+            commands::cloud_backup::dropbox_restore_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

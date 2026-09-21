@@ -26,21 +26,10 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { DropboxSection } from "./DropboxSection";
+import { formatBytes, formatDateTime } from "./format";
 
 const KNOWN_SETTINGS_FIELDS = ["retention_count", "auto_backup_frequency"] as const;
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  const mb = kb / 1024;
-  return `${mb.toFixed(1)} MB`;
-}
 
 export function BackupScreen() {
   const { t } = useI18n();
@@ -439,6 +428,8 @@ export function BackupScreen() {
           )}
         </CardContent>
       </Card>
+
+      <DropboxSection localBackups={backups} onLocalBackupCreated={refreshBackups} />
     </section>
   );
 }
