@@ -212,18 +212,25 @@ export function AnalyticsScreen() {
           ) : topExpensive.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("analytics.noPricedMaterials")}</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(240, topExpensive.length * 36)}>
-              <BarChart data={topExpensive} layout="vertical" margin={{ left: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tickFormatter={(v: number) => `€${formatMoney(v, 2)}`} />
-                <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12 }} />
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={topExpensive} margin={{ bottom: 64 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  interval={0}
+                  angle={-40}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis tickFormatter={(v: number) => `€${formatMoney(v, 2)}`} />
                 <Tooltip
                   formatter={(value, _name, entry) => [
                     `€${formatMoney(Number(value))}/${(entry.payload as { unit: string }).unit}`,
                     t("analytics.price"),
                   ]}
                 />
-                <Bar dataKey="price" fill="var(--primary)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="price" fill="var(--primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
