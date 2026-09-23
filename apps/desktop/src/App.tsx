@@ -89,6 +89,8 @@ function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [autoCreateRawMaterial, setAutoCreateRawMaterial] = useState(false);
+  const [autoCreateRecipe, setAutoCreateRecipe] = useState(false);
 
   useEffect(() => {
     // Covers hot-reload during development, where the Rust process (and its in-memory session)
@@ -99,6 +101,16 @@ function App() {
       .catch(() => setSession(null))
       .finally(() => setCheckingSession(false));
   }, []);
+
+  function goToAddRawMaterial() {
+    setAutoCreateRawMaterial(true);
+    setActiveTab("raw-materials");
+  }
+
+  function goToAddRecipe() {
+    setAutoCreateRecipe(true);
+    setActiveTab("recipes");
+  }
 
   async function handleLogout() {
     await authApi.logout();
@@ -206,10 +218,22 @@ function App() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          {activeTab === "dashboard" && <DashboardScreen />}
-          {activeTab === "raw-materials" && <RawMaterialsScreen />}
+          {activeTab === "dashboard" && (
+            <DashboardScreen onAddRawMaterial={goToAddRawMaterial} onAddRecipe={goToAddRecipe} />
+          )}
+          {activeTab === "raw-materials" && (
+            <RawMaterialsScreen
+              autoOpenCreate={autoCreateRawMaterial}
+              onAutoOpenCreateHandled={() => setAutoCreateRawMaterial(false)}
+            />
+          )}
           {activeTab === "suppliers" && <SuppliersScreen />}
-          {activeTab === "recipes" && <RecipesScreen />}
+          {activeTab === "recipes" && (
+            <RecipesScreen
+              autoOpenCreate={autoCreateRecipe}
+              onAutoOpenCreateHandled={() => setAutoCreateRecipe(false)}
+            />
+          )}
           {activeTab === "cost-calculator" && <CostCalculatorScreen />}
           {activeTab === "backup" && <BackupScreen />}
           {activeTab === "settings" && <SettingsScreen />}

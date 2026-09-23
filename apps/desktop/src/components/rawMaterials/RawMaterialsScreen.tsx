@@ -37,7 +37,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
 
-export function RawMaterialsScreen() {
+interface RawMaterialsScreenProps {
+  /** Set (once) to jump straight into the create form on mount — e.g. a "Add raw material"
+   * shortcut elsewhere in the app navigating here. Consumed via `onAutoOpenCreateHandled` so
+   * navigating back to this tab later doesn't reopen the form every time. */
+  autoOpenCreate?: boolean;
+  onAutoOpenCreateHandled?: () => void;
+}
+
+export function RawMaterialsScreen({
+  autoOpenCreate,
+  onAutoOpenCreateHandled,
+}: RawMaterialsScreenProps = {}) {
   const { t, te } = useI18n();
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -73,6 +84,13 @@ export function RawMaterialsScreen() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!autoOpenCreate) return;
+    setPanel({ mode: "create" });
+    onAutoOpenCreateHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per truthy autoOpenCreate; the parent clears it right after, so it shouldn't re-fire on its own
+  }, [autoOpenCreate]);
 
   const categoryName = useCallback(
     (categoryId: number | null): string => {

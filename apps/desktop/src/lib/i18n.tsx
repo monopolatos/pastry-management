@@ -77,7 +77,12 @@ const en = {
   "dashboard.noRecentPurchases": "No purchases recorded yet.",
   "dashboard.backupStatus": "Backup Status",
   "dashboard.backupNotConfigured":
-    "Not configured yet. Backup & Restore is coming in a future update.",
+    "No automatic backup is set up yet — configure one in Backup & Restore.",
+  "dashboard.localBackupEnabled": "Local auto-backup: {frequency}",
+  "dashboard.dropboxConnected": "Connected to Dropbox",
+  "dashboard.dropboxAutoBackupEnabled": "Dropbox auto-backup: {frequency}",
+  "dashboard.lastBackupAt": "Last backup: {datetime}",
+  "dashboard.noBackupRunYet": "No automatic backup has run yet.",
   "dashboard.loadError": "Could not load dashboard data.",
 
   "costCalculator.title": "Cost Calculator",
@@ -435,7 +440,12 @@ const el: Record<keyof typeof en, string> = {
   "dashboard.noRecentPurchases": "Δεν έχουν καταχωρηθεί αγορές ακόμη.",
   "dashboard.backupStatus": "Κατάσταση Αντιγράφων Ασφαλείας",
   "dashboard.backupNotConfigured":
-    "Δεν έχει ρυθμιστεί ακόμη. Τα Αντίγραφα Ασφαλείας έρχονται σε επόμενη ενημέρωση.",
+    "Δεν έχει ρυθμιστεί αυτόματο αντίγραφο ασφαλείας — ρυθμίστε ένα στα Αντίγραφα Ασφαλείας.",
+  "dashboard.localBackupEnabled": "Τοπικό αυτόματο αντίγραφο: {frequency}",
+  "dashboard.dropboxConnected": "Συνδεδεμένο με το Dropbox",
+  "dashboard.dropboxAutoBackupEnabled": "Αυτόματο αντίγραφο Dropbox: {frequency}",
+  "dashboard.lastBackupAt": "Τελευταίο αντίγραφο: {datetime}",
+  "dashboard.noBackupRunYet": "Δεν έχει εκτελεστεί ακόμη αυτόματο αντίγραφο ασφαλείας.",
   "dashboard.loadError": "Δεν ήταν δυνατή η φόρτωση των δεδομένων του πίνακα ελέγχου.",
 
   "costCalculator.title": "Υπολογισμός Κόστους",

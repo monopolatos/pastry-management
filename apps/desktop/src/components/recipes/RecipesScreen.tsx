@@ -34,7 +34,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; recipe: RecipeDetailData };
 
-export function RecipesScreen() {
+interface RecipesScreenProps {
+  /** Set (once) to jump straight into the create form on mount — e.g. a "Add recipe" shortcut
+   * elsewhere in the app navigating here. Consumed via `onAutoOpenCreateHandled` so navigating
+   * back to this tab later doesn't reopen the form every time. */
+  autoOpenCreate?: boolean;
+  onAutoOpenCreateHandled?: () => void;
+}
+
+export function RecipesScreen({
+  autoOpenCreate,
+  onAutoOpenCreateHandled,
+}: RecipesScreenProps = {}) {
   const { t, te } = useI18n();
 
   function unitLabel(units: MeasurementUnit[], code: string): string {
@@ -83,6 +94,13 @@ export function RecipesScreen() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!autoOpenCreate) return;
+    setPanel({ mode: "create" });
+    onAutoOpenCreateHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per truthy autoOpenCreate; the parent clears it right after, so it shouldn't re-fire on its own
+  }, [autoOpenCreate]);
 
   async function handleCreate(input: RecipeInput) {
     await recipesApi.createRecipe(input);
