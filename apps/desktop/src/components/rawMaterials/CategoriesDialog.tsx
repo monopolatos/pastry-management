@@ -48,6 +48,9 @@ export function CategoriesDialog({
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [rowError, setRowError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const formError = useFormError();
 
   const visible = includeInactive ? categories : categories.filter((c) => c.is_active);
@@ -68,6 +71,36 @@ export function CategoriesDialog({
       formError.handle(err, KNOWN_FIELDS);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function startEdit(category: Category) {
+    setRowError(null);
+    setEditingId(category.id);
+    setEditName(category.name);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditName("");
+  }
+
+  async function handleSaveEdit(id: number) {
+    if (editName.trim() === "") {
+      setRowError(t("categories.nameRequired"));
+      return;
+    }
+    setRowError(null);
+    setSavingEdit(true);
+    try {
+      await categoriesApi.updateCategory(id, { name: editName.trim() });
+      setEditingId(null);
+      setEditName("");
+      onChanged();
+    } catch (err) {
+      setRowError(te(err));
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -153,55 +186,101 @@ export function CategoriesDialog({
                   </TableCell>
                 </TableRow>
               ) : (
-                visible.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell>{category.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={category.is_active ? "success" : "destructive"}>
-                        {category.is_active ? t("common.active") : t("common.archived")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleArchiveToggle(category)}
-                        >
-                          {category.is_active ? t("common.archive") : t("common.reactivate")}
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button type="button" variant="destructive" size="sm">
-                              {t("common.delete")}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                {t("common.deleteConfirmTitle").replace("{name}", category.name)}
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {t("categories.deleteConfirmBody")}{" "}
-                                {t("common.deleteCannotBeUndone")}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                              <AlertDialogAction
-                                variant="destructive"
-                                onClick={() => handleDelete(category.id)}
-                              >
+                visible.map((category) =>
+                  editingId === category.id ? (
+                    <TableRow key={category.id}>
+                      <TableCell colSpan={2}>
+                        <Input
+                          autoFocus
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveEdit(category.id);
+                            if (e.key === "Escape") cancelEdit();
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={savingEdit}
+                            onClick={() => handleSaveEdit(category.id)}
+                          >
+                            {savingEdit ? t("common.saving") : t("common.save")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={savingEdit}
+                            onClick={cancelEdit}
+                          >
+                            {t("common.cancel")}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow key={category.id}>
+                      <TableCell>{category.name}</TableCell>
+                      <TableCell>
+                        <Badge variant={category.is_active ? "success" : "destructive"}>
+                          {category.is_active ? t("common.active") : t("common.archived")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEdit(category)}
+                          >
+                            {t("common.edit")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleArchiveToggle(category)}
+                          >
+                            {category.is_active ? t("common.archive") : t("common.reactivate")}
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button type="button" variant="destructive" size="sm">
                                 {t("common.delete")}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  {t("common.deleteConfirmTitle").replace("{name}", category.name)}
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {t("categories.deleteConfirmBody")}{" "}
+                                  {t("common.deleteCannotBeUndone")}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                                <AlertDialogAction
+                                  variant="destructive"
+                                  onClick={() => handleDelete(category.id)}
+                                >
+                                  {t("common.delete")}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ),
+                )
               )}
             </TableBody>
           </Table>

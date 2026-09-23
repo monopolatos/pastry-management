@@ -303,6 +303,7 @@ const en = {
   "categories.newCategory": "New category",
   "categories.empty": "No categories yet.",
   "categories.deleteConfirmBody": "This permanently deletes the category.",
+  "categories.nameRequired": "Category name is required.",
 
   "common.close": "Close",
 
@@ -669,6 +670,7 @@ const el: Record<keyof typeof en, string> = {
   "categories.newCategory": "Νέα κατηγορία",
   "categories.empty": "Δεν υπάρχουν ακόμη κατηγορίες.",
   "categories.deleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
+  "categories.nameRequired": "Το όνομα κατηγορίας είναι υποχρεωτικό.",
 
   "common.close": "Κλείσιμο",
 
