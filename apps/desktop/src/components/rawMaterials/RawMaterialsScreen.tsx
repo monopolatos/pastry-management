@@ -122,13 +122,14 @@ export function RawMaterialsScreen({
 
   const priceLabel = useCallback(
     (material: RawMaterial): string => {
+      const unit = unitLabel(material.base_unit_code);
       const costing = costingById.get(material.id);
-      if (!costing) return "—";
+      if (!costing) return `—/${unit}`;
       try {
         const resolved = resolveRawMaterialPrice(costing);
-        return `€${formatMoney(resolved.costPerBaseUnitMicros.toNumber(), 2)}/${unitLabel(material.base_unit_code)}`;
+        return `€${formatMoney(resolved.costPerBaseUnitMicros.toNumber(), 2)}/${unit}`;
       } catch {
-        return "—";
+        return `—/${unit}`;
       }
     },
     [costingById, unitLabel],
@@ -291,7 +292,6 @@ export function RawMaterialsScreen({
               <TableRow>
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.category")}</TableHead>
-                <TableHead>{t("rawMaterials.baseUnit")}</TableHead>
                 <TableHead>{t("rawMaterials.pricePerBaseUnit")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
                 <TableHead>{t("common.actions")}</TableHead>
@@ -311,7 +311,6 @@ export function RawMaterialsScreen({
                     </Button>
                   </TableCell>
                   <TableCell>{categoryName(material.category_id)}</TableCell>
-                  <TableCell>{unitLabel(material.base_unit_code)}</TableCell>
                   <TableCell>{priceLabel(material)}</TableCell>
                   <TableCell>
                     <Badge variant={material.is_active ? "success" : "destructive"}>
