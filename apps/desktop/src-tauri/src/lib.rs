@@ -234,6 +234,12 @@ pub fn run() {
             commands::categories::archive_category,
             commands::categories::reactivate_category,
             commands::categories::delete_category,
+            commands::recipe_categories::list_recipe_categories,
+            commands::recipe_categories::create_recipe_category,
+            commands::recipe_categories::update_recipe_category,
+            commands::recipe_categories::archive_recipe_category,
+            commands::recipe_categories::reactivate_recipe_category,
+            commands::recipe_categories::delete_recipe_category,
             commands::import::choose_excel_file,
             commands::import::import_from_excel,
         ])

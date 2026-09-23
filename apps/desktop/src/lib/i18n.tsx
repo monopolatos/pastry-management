@@ -30,6 +30,7 @@ const en = {
   "nav.rawMaterials": "Raw Materials",
   "nav.suppliers": "Suppliers",
   "nav.recipes": "Recipes",
+  "nav.categories": "Categories",
   "nav.costCalculator": "Cost Calculator",
   "nav.backup": "Backup & Restore",
   "nav.settings": "Settings",
@@ -272,7 +273,6 @@ const en = {
   "rawMaterials.editRawMaterial": "Edit raw material",
   "rawMaterials.empty": "No raw materials yet.",
   "rawMaterials.deleteConfirmBody": "This permanently deletes the raw material.",
-  "rawMaterials.manageCategories": "Manage categories",
   "rawMaterials.backToList": "Back to raw materials",
   "rawMaterials.justCreatedNotice":
     '"{name}" was created. It has no price yet — record its first purchase below to set one.',
@@ -298,12 +298,14 @@ const en = {
   "rawMaterials.setStartingPrice": "Set a starting price",
   "rawMaterials.setStartingPriceHint": "(optional — you can add this later)",
 
-  "categories.dialogDescription":
-    "Categories used by raw materials. Archive one instead of deleting it if any raw material still uses it.",
   "categories.newCategory": "New category",
   "categories.empty": "No categories yet.",
   "categories.deleteConfirmBody": "This permanently deletes the category.",
+  "categories.recipeDeleteConfirmBody": "This permanently deletes the category.",
   "categories.nameRequired": "Category name is required.",
+  "categories.title": "Categories",
+  "categories.materialCategories": "Raw Material Categories",
+  "categories.recipeCategories": "Recipe Categories",
 
   "common.close": "Close",
 
@@ -325,8 +327,6 @@ const en = {
   "recipes.yield": "Makes",
   "recipes.duplicate": "Duplicate",
   "recipes.deleteConfirmBody": "This permanently deletes the recipe.",
-  "recipes.categoryPlaceholder": "e.g. Cakes, Pastries, Fillings…",
-  "recipes.pickCategoryHint": "Pick an existing category or type a new one.",
   "recipes.instructions": "Instructions",
   "recipes.prepTimeMinutes": "Prep time (minutes)",
   "recipes.cookTimeMinutes": "Cook time (minutes)",
@@ -394,6 +394,7 @@ const el: Record<keyof typeof en, string> = {
   "nav.rawMaterials": "Πρώτες Ύλες",
   "nav.suppliers": "Προμηθευτές",
   "nav.recipes": "Συνταγές",
+  "nav.categories": "Κατηγορίες",
   "nav.costCalculator": "Υπολογισμός Κόστους",
   "nav.backup": "Αντίγραφα Ασφαλείας",
   "nav.settings": "Ρυθμίσεις",
@@ -639,7 +640,6 @@ const el: Record<keyof typeof en, string> = {
   "rawMaterials.editRawMaterial": "Επεξεργασία πρώτης ύλης",
   "rawMaterials.empty": "Δεν υπάρχουν ακόμη πρώτες ύλες.",
   "rawMaterials.deleteConfirmBody": "Αυτό διαγράφει οριστικά την πρώτη ύλη.",
-  "rawMaterials.manageCategories": "Διαχείριση κατηγοριών",
   "rawMaterials.backToList": "Επιστροφή στις πρώτες ύλες",
   "rawMaterials.justCreatedNotice":
     "Η «{name}» δημιουργήθηκε. Δεν έχει ακόμη τιμή — καταχωρήστε την πρώτη αγορά παρακάτω για να ορίσετε μία.",
@@ -665,12 +665,14 @@ const el: Record<keyof typeof en, string> = {
   "rawMaterials.setStartingPrice": "Ορισμός αρχικής τιμής",
   "rawMaterials.setStartingPriceHint": "(προαιρετικό — μπορείτε να το προσθέσετε αργότερα)",
 
-  "categories.dialogDescription":
-    "Κατηγορίες που χρησιμοποιούνται από πρώτες ύλες. Αρχειοθετήστε μία αντί να τη διαγράψετε αν κάποια πρώτη ύλη τη χρησιμοποιεί ακόμη.",
   "categories.newCategory": "Νέα κατηγορία",
   "categories.empty": "Δεν υπάρχουν ακόμη κατηγορίες.",
   "categories.deleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
+  "categories.recipeDeleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
   "categories.nameRequired": "Το όνομα κατηγορίας είναι υποχρεωτικό.",
+  "categories.title": "Κατηγορίες",
+  "categories.materialCategories": "Κατηγορίες Υλικών",
+  "categories.recipeCategories": "Κατηγορίες Συνταγών",
 
   "common.close": "Κλείσιμο",
 
@@ -692,8 +694,6 @@ const el: Record<keyof typeof en, string> = {
   "recipes.yield": "Παράγει",
   "recipes.duplicate": "Αντιγραφή",
   "recipes.deleteConfirmBody": "Αυτό διαγράφει οριστικά τη συνταγή.",
-  "recipes.categoryPlaceholder": "π.χ. Τούρτες, Πάστες, Γέμιση…",
-  "recipes.pickCategoryHint": "Επιλέξτε μια υπάρχουσα κατηγορία ή πληκτρολογήστε μια νέα.",
   "recipes.instructions": "Οδηγίες",
   "recipes.prepTimeMinutes": "Χρόνος προετοιμασίας (λεπτά)",
   "recipes.cookTimeMinutes": "Χρόνος ψησίματος (λεπτά)",

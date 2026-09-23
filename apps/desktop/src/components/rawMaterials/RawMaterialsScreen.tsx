@@ -15,7 +15,6 @@ import type {
   Supplier,
 } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
-import { CategoriesDialog } from "./CategoriesDialog";
 import { ImportDialog } from "./ImportDialog";
 import { RawMaterialDetail } from "./RawMaterialDetail";
 import { RawMaterialForm } from "./RawMaterialForm";
@@ -68,7 +67,6 @@ export function RawMaterialsScreen({
   const [rowError, setRowError] = useState<string | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
   const [justCreated, setJustCreated] = useState(false);
-  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -226,22 +224,12 @@ export function RawMaterialsScreen({
             />
             {t("common.showInactive")}
           </Label>
-          <Button type="button" variant="outline" onClick={() => setCategoriesDialogOpen(true)}>
-            {t("rawMaterials.manageCategories")}
-          </Button>
           <ImportDialog onImported={refresh} />
           <Button type="button" onClick={() => setPanel({ mode: "create" })}>
             {t("rawMaterials.addRawMaterial")}
           </Button>
         </div>
       </div>
-
-      <CategoriesDialog
-        open={categoriesDialogOpen}
-        onOpenChange={setCategoriesDialogOpen}
-        categories={categories}
-        onChanged={refresh}
-      />
 
       {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}

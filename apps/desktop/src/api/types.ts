@@ -172,6 +172,7 @@ export type IngredientType = "raw_material" | "recipe";
 export interface RecipeSummary {
   id: number;
   name: string;
+  /** Denormalized for display convenience — the recipe category's current name. */
   category: string | null;
   status: RecipeStatus;
   version_number: number;
@@ -196,7 +197,9 @@ export interface RecipeDetail {
   id: number;
   name: string;
   description: string | null;
+  /** Denormalized for display convenience — the recipe category's current name. */
   category: string | null;
+  category_id: number | null;
   instructions: string | null;
   prep_time_minutes: number | null;
   cook_time_minutes: number | null;
@@ -223,7 +226,7 @@ export interface RecipeIngredientInput {
 export interface RecipeInput {
   name: string;
   description: string | null;
-  category: string | null;
+  category_id: number | null;
   instructions: string | null;
   prep_time_minutes: number | null;
   cook_time_minutes: number | null;

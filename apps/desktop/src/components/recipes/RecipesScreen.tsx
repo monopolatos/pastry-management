@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { CostingRawMaterial } from "@pastry-management/core";
 import { listMeasurementUnits } from "../../api/measurementUnits";
 import { listRawMaterials } from "../../api/rawMaterials";
+import { listRecipeCategories } from "../../api/recipeCategories";
 import * as recipesApi from "../../api/recipes";
 import { UNIT_KIND_LABEL_KEYS } from "../../api/types";
 import type {
+  Category,
   MeasurementUnit,
   RawMaterial,
   RecipeDetail as RecipeDetailData,
@@ -62,6 +64,7 @@ export function RecipesScreen({
   const [activeRecipes, setActiveRecipes] = useState<RecipeSummary[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [rawMaterialCosting, setRawMaterialCosting] = useState<CostingRawMaterial[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<MeasurementUnit[]>([]);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,14 +82,26 @@ export function RecipesScreen({
       listRawMaterials(false),
       listMeasurementUnits(),
       recipesApi.listRawMaterialCosting(),
+      // Active only — an archived category can't be picked for a new/edited recipe.
+      listRecipeCategories(false),
     ])
-      .then(([recipesResult, activeResult, materialsResult, unitsResult, costingResult]) => {
-        setRecipes(recipesResult);
-        setActiveRecipes(activeResult);
-        setRawMaterials(materialsResult);
-        setUnits(unitsResult);
-        setRawMaterialCosting(costingResult);
-      })
+      .then(
+        ([
+          recipesResult,
+          activeResult,
+          materialsResult,
+          unitsResult,
+          costingResult,
+          categoriesResult,
+        ]) => {
+          setRecipes(recipesResult);
+          setActiveRecipes(activeResult);
+          setRawMaterials(materialsResult);
+          setUnits(unitsResult);
+          setRawMaterialCosting(costingResult);
+          setCategories(categoriesResult);
+        },
+      )
       .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
   }, [includeArchived, te]);
@@ -179,10 +194,6 @@ export function RecipesScreen({
       />
     );
   }
-
-  const categories = Array.from(
-    new Set(recipes.map((r) => r.category).filter((c): c is string => !!c)),
-  ).sort((a, b) => a.localeCompare(b));
 
   return (
     <section className="flex flex-col gap-4">

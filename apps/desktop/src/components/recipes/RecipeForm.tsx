@@ -10,6 +10,7 @@ import type { CostBreakdown, CostingRawMaterial, CostingUnit } from "@pastry-man
 import * as recipesApi from "../../api/recipes";
 import { UNIT_KIND_LABEL_KEYS } from "../../api/types";
 import type {
+  Category,
   IngredientType,
   MeasurementUnit,
   RawMaterial,
@@ -28,9 +29,9 @@ import { Textarea } from "../ui/textarea";
 
 interface RecipeFormProps {
   initial?: RecipeDetail;
-  /** Existing category values across all recipes, offered as a picker (see `<datalist>` below) so
-   * categories stay consistent without needing a separate categories table/CRUD screen. */
-  categories: string[];
+  /** Active recipe categories — managed from the dedicated Categories screen, not created inline
+   * here. */
+  categories: Category[];
   /** Active raw materials only — an archived material can't be picked for a new/edited recipe. */
   rawMaterials: RawMaterial[];
   /** Purchase history + pricing strategy for every active raw material, used to compute a live
@@ -59,11 +60,14 @@ interface IngredientRow {
 
 const KNOWN_FIELDS = [
   "name",
+  "category_id",
   "yield_quantity",
   "yield_unit_code",
   "grams_per_portion",
   "ingredients",
 ] as const;
+
+const NONE_VALUE = "__none__";
 
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -100,7 +104,9 @@ export function RecipeForm({
 
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [category, setCategory] = useState(initial?.category ?? "");
+  const [categoryId, setCategoryId] = useState(
+    initial?.category_id != null ? String(initial.category_id) : "",
+  );
   const [instructions, setInstructions] = useState(initial?.instructions ?? "");
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(
     initial?.prep_time_minutes != null ? String(initial.prep_time_minutes) : "",
@@ -448,7 +454,7 @@ export function RecipeForm({
       await onSubmit({
         name: name.trim(),
         description: emptyToNull(description),
-        category: emptyToNull(category),
+        category_id: categoryId === "" ? null : Number(categoryId),
         instructions: emptyToNull(instructions),
         prep_time_minutes: emptyToNullMinutes(prepTimeMinutes),
         cook_time_minutes: emptyToNullMinutes(cookTimeMinutes),
@@ -494,19 +500,25 @@ export function RecipeForm({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="recipe-category">{t("common.category")}</Label>
-            <Input
-              id="recipe-category"
-              type="text"
-              list="recipe-category-options"
-              placeholder={t("recipes.categoryPlaceholder")}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            />
-            <datalist id="recipe-category-options">
-              {categories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            <Select
+              value={categoryId === "" ? NONE_VALUE : categoryId}
+              onValueChange={(value) => setCategoryId(value === NONE_VALUE ? "" : value)}
+            >
+              <SelectTrigger id="recipe-category" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formError.fieldError("category_id") && (
+              <p className="text-sm text-destructive">{formError.fieldError("category_id")}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

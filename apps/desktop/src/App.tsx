@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings as SettingsIcon,
+  Tags,
   Truck,
   Users as UsersIcon,
   Wheat,
@@ -14,6 +15,7 @@ import {
 import * as authApi from "./api/auth";
 import { AuthScreen } from "./components/auth/AuthScreen";
 import { BackupScreen } from "./components/backup/BackupScreen";
+import { CategoriesScreen } from "./components/categories/CategoriesScreen";
 import { CostCalculatorScreen } from "./components/costCalculator/CostCalculatorScreen";
 import { DashboardScreen } from "./components/dashboard/DashboardScreen";
 import { ProfileScreen } from "./components/profile/ProfileScreen";
@@ -49,6 +51,7 @@ type Tab =
   | "raw-materials"
   | "suppliers"
   | "recipes"
+  | "categories"
   | "cost-calculator"
   | "backup"
   | "settings"
@@ -66,6 +69,7 @@ const NAV_ITEMS: NavItem[] = [
   { tab: "raw-materials", labelKey: "nav.rawMaterials", icon: Wheat },
   { tab: "suppliers", labelKey: "nav.suppliers", icon: Truck },
   { tab: "recipes", labelKey: "nav.recipes", icon: ChefHat },
+  { tab: "categories", labelKey: "nav.categories", icon: Tags },
   { tab: "cost-calculator", labelKey: "nav.costCalculator", icon: Calculator },
   { tab: "backup", labelKey: "nav.backup", icon: DatabaseBackup },
   { tab: "settings", labelKey: "nav.settings", icon: SettingsIcon },
@@ -234,6 +238,7 @@ function App() {
               onAutoOpenCreateHandled={() => setAutoCreateRecipe(false)}
             />
           )}
+          {activeTab === "categories" && <CategoriesScreen />}
           {activeTab === "cost-calculator" && <CostCalculatorScreen />}
           {activeTab === "backup" && <BackupScreen />}
           {activeTab === "settings" && <SettingsScreen />}

@@ -18,6 +18,7 @@ use crate::error::{AppError, AppResult};
 pub struct RecipeSummary {
     pub id: i64,
     pub name: String,
+    /// Denormalized for display convenience — the recipe category's current name.
     pub category: Option<String>,
     pub status: String,
     pub version_number: i64,
@@ -44,7 +45,9 @@ pub struct RecipeDetail {
     pub id: i64,
     pub name: String,
     pub description: Option<String>,
+    /// Denormalized for display convenience — the recipe category's current name.
     pub category: Option<String>,
+    pub category_id: Option<i64>,
     pub instructions: Option<String>,
     pub prep_time_minutes: Option<i64>,
     pub cook_time_minutes: Option<i64>,
@@ -73,7 +76,7 @@ pub struct RecipeIngredientInput {
 pub struct RecipeInput {
     pub name: String,
     pub description: Option<String>,
-    pub category: Option<String>,
+    pub category_id: Option<i64>,
     pub instructions: Option<String>,
     pub prep_time_minutes: Option<i64>,
     pub cook_time_minutes: Option<i64>,
@@ -371,6 +374,26 @@ fn validate_recipe_fields(input: &RecipeInput) -> AppResult<()> {
     Ok(())
 }
 
+fn validate_category(conn: &Connection, category_id: Option<i64>) -> AppResult<()> {
+    let Some(id) = category_id else {
+        return Ok(());
+    };
+    let exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM recipe_categories WHERE id = ?1",
+            [id],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)?;
+    if !exists {
+        return Err(AppError::field(
+            "category_id",
+            "Selected category does not exist.",
+        ));
+    }
+    Ok(())
+}
+
 pub fn create(
     conn: &Connection,
     input: RecipeInput,
@@ -393,17 +416,18 @@ pub fn create(
             ),
         ));
     }
+    validate_category(conn, input.category_id)?;
     for ing in &input.ingredients {
         validate_ingredient(conn, None, ing)?;
     }
 
     conn.execute(
-        "INSERT INTO recipes (name, description, category, instructions, prep_time_minutes, cook_time_minutes, notes)
+        "INSERT INTO recipes (name, description, category_id, instructions, prep_time_minutes, cook_time_minutes, notes)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             input.name.trim(),
             input.description,
-            input.category,
+            input.category_id,
             input.instructions,
             input.prep_time_minutes,
             input.cook_time_minutes,
@@ -431,19 +455,20 @@ pub fn update(
     if !exists {
         return Err(AppError::new(format!("Recipe {id} was not found.")));
     }
+    validate_category(conn, input.category_id)?;
     for ing in &input.ingredients {
         validate_ingredient(conn, Some(id), ing)?;
     }
 
     conn.execute(
         "UPDATE recipes
-         SET name = ?1, description = ?2, category = ?3, instructions = ?4, prep_time_minutes = ?5,
+         SET name = ?1, description = ?2, category_id = ?3, instructions = ?4, prep_time_minutes = ?5,
              cook_time_minutes = ?6, notes = ?7, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
          WHERE id = ?8",
         params![
             input.name.trim(),
             input.description,
-            input.category,
+            input.category_id,
             input.instructions,
             input.prep_time_minutes,
             input.cook_time_minutes,
@@ -461,6 +486,7 @@ struct RecipeHeaderRow {
     name: String,
     description: Option<String>,
     category: Option<String>,
+    category_id: Option<i64>,
     instructions: Option<String>,
     prep_time_minutes: Option<i64>,
     cook_time_minutes: Option<i64>,
@@ -478,11 +504,12 @@ struct RecipeHeaderRow {
 pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
     let header = conn
         .query_row(
-            "SELECT r.id, r.name, r.description, r.category, r.instructions, r.prep_time_minutes,
+            "SELECT r.id, r.name, r.description, rc.name, r.category_id, r.instructions, r.prep_time_minutes,
                     r.cook_time_minutes, r.status, r.notes, r.created_at, r.updated_at,
                     v.id, v.version_number, v.yield_quantity, v.yield_unit_code, v.grams_per_portion
              FROM recipes r
              JOIN recipe_versions v ON v.id = r.current_version_id
+             LEFT JOIN recipe_categories rc ON rc.id = r.category_id
              WHERE r.id = ?1",
             [id],
             |row| {
@@ -491,18 +518,19 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
                     name: row.get(1)?,
                     description: row.get(2)?,
                     category: row.get(3)?,
-                    instructions: row.get(4)?,
-                    prep_time_minutes: row.get(5)?,
-                    cook_time_minutes: row.get(6)?,
-                    status: row.get(7)?,
-                    notes: row.get(8)?,
-                    created_at: row.get(9)?,
-                    updated_at: row.get(10)?,
-                    version_id: row.get(11)?,
-                    version_number: row.get(12)?,
-                    yield_quantity: row.get(13)?,
-                    yield_unit_code: row.get(14)?,
-                    grams_per_portion: row.get(15)?,
+                    category_id: row.get(4)?,
+                    instructions: row.get(5)?,
+                    prep_time_minutes: row.get(6)?,
+                    cook_time_minutes: row.get(7)?,
+                    status: row.get(8)?,
+                    notes: row.get(9)?,
+                    created_at: row.get(10)?,
+                    updated_at: row.get(11)?,
+                    version_id: row.get(12)?,
+                    version_number: row.get(13)?,
+                    yield_quantity: row.get(14)?,
+                    yield_unit_code: row.get(15)?,
+                    grams_per_portion: row.get(16)?,
                 })
             },
         )
@@ -514,6 +542,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
         name,
         description,
         category,
+        category_id,
         instructions,
         prep_time_minutes,
         cook_time_minutes,
@@ -597,6 +626,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
         name,
         description,
         category,
+        category_id,
         instructions,
         prep_time_minutes,
         cook_time_minutes,
@@ -614,9 +644,10 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
 
 pub fn list(conn: &Connection, include_archived: bool) -> AppResult<Vec<RecipeSummary>> {
     let sql = format!(
-        "SELECT r.id, r.name, r.category, r.status, v.version_number, v.yield_quantity, v.yield_unit_code, r.updated_at
+        "SELECT r.id, r.name, rc.name, r.status, v.version_number, v.yield_quantity, v.yield_unit_code, r.updated_at
          FROM recipes r
          JOIN recipe_versions v ON v.id = r.current_version_id
+         LEFT JOIN recipe_categories rc ON rc.id = r.category_id
          {}
          ORDER BY r.name",
         if include_archived { "" } else { "WHERE r.status = 'active'" }
@@ -678,7 +709,7 @@ pub fn duplicate(conn: &Connection, id: i64, new_name: Option<String>) -> AppRes
     let input = RecipeInput {
         name,
         description: original.description,
-        category: original.category,
+        category_id: original.category_id,
         instructions: original.instructions,
         prep_time_minutes: original.prep_time_minutes,
         cook_time_minutes: original.cook_time_minutes,
@@ -969,6 +1000,8 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../../../migrations/0008_recipe_portions.sql"))
             .unwrap();
+        conn.execute_batch(include_str!("../../../migrations/0010_recipe_categories.sql"))
+            .unwrap();
         conn
     }
 
@@ -994,7 +1027,7 @@ mod tests {
         RecipeInput {
             name: name.into(),
             description: None,
-            category: None,
+            category_id: None,
             instructions: None,
             prep_time_minutes: None,
             cook_time_minutes: None,
@@ -1079,7 +1112,7 @@ mod tests {
         let cake_input = RecipeInput {
             name: "Chocolate Cake".into(),
             description: None,
-            category: None,
+            category_id: None,
             instructions: None,
             prep_time_minutes: None,
             cook_time_minutes: None,
@@ -1107,7 +1140,7 @@ mod tests {
         let b_input = RecipeInput {
             name: "B".into(),
             description: None,
-            category: None,
+            category_id: None,
             instructions: None,
             prep_time_minutes: None,
             cook_time_minutes: None,
@@ -1172,7 +1205,7 @@ mod tests {
         let b_input = RecipeInput {
             name: "B".into(),
             description: None,
-            category: None,
+            category_id: None,
             instructions: None,
             prep_time_minutes: None,
             cook_time_minutes: None,
@@ -1200,7 +1233,7 @@ mod tests {
         let cake_input = RecipeInput {
             name: "Cake".into(),
             description: None,
-            category: None,
+            category_id: None,
             instructions: None,
             prep_time_minutes: None,
             cook_time_minutes: None,
@@ -1242,7 +1275,7 @@ mod tests {
         let cake_input = RecipeInput {
             name: "Cake".into(),
             description: None,
-            category: None,
+            category_id: None,
             instructions: None,
             prep_time_minutes: None,
             cook_time_minutes: None,

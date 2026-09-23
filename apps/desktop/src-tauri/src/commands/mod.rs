@@ -6,6 +6,7 @@ pub mod import;
 pub mod measurement_units;
 pub mod purchase_records;
 pub mod raw_materials;
+pub mod recipe_categories;
 pub mod recipes;
 pub mod suppliers;
 pub mod updates;
