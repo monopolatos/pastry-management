@@ -277,6 +277,7 @@ const en = {
   "rawMaterials.justCreatedNotice":
     '"{name}" was created. It has no price yet — record its first purchase below to set one.',
   "rawMaterials.baseUnit": "Base unit",
+  "rawMaterials.pricePerBaseUnit": "Price / base unit",
   "rawMaterials.purchaseHistory": "Purchase history",
   "rawMaterials.noPurchasesYet": "No purchases recorded yet.",
   "rawMaterials.totalPrice": "Total price",
@@ -642,6 +643,7 @@ const el: Record<keyof typeof en, string> = {
   "rawMaterials.justCreatedNotice":
     "Η «{name}» δημιουργήθηκε. Δεν έχει ακόμη τιμή — καταχωρήστε την πρώτη αγορά παρακάτω για να ορίσετε μία.",
   "rawMaterials.baseUnit": "Βασική μονάδα",
+  "rawMaterials.pricePerBaseUnit": "Τιμή / βασική μονάδα",
   "rawMaterials.purchaseHistory": "Ιστορικό αγορών",
   "rawMaterials.noPurchasesYet": "Δεν έχουν καταχωρηθεί αγορές ακόμη.",
   "rawMaterials.totalPrice": "Συνολική τιμή",

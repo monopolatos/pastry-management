@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { resolveRawMaterialPrice } from "@pastry-management/core";
+import type { CostingRawMaterial } from "@pastry-management/core";
 import * as categoriesApi from "../../api/categories";
 import * as rawMaterialsApi from "../../api/rawMaterials";
 import { createPurchaseRecord } from "../../api/purchaseRecords";
+import { listRawMaterialCosting } from "../../api/recipes";
 import { listSuppliers } from "../../api/suppliers";
 import { UNIT_LABEL_KEYS } from "../../api/types";
 import type {
@@ -37,6 +40,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
 
+function formatMoney(micros: number, digits = 4): string {
+  return (micros / 1_000_000).toFixed(digits);
+}
+
 interface RawMaterialsScreenProps {
   /** Set (once) to jump straight into the create form on mount — e.g. a "Add raw material"
    * shortcut elsewhere in the app navigating here. Consumed via `onAutoOpenCreateHandled` so
@@ -53,6 +60,7 @@ export function RawMaterialsScreen({
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [costingById, setCostingById] = useState<Map<number, CostingRawMaterial>>(new Map());
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -71,11 +79,15 @@ export function RawMaterialsScreen({
       // archived one) can still resolve a display name.
       listSuppliers(true),
       categoriesApi.listCategories(true),
+      // Active materials only — an archived material's price isn't relevant to surface here, and
+      // this mirrors the same active-only costing data the recipe editor's ingredient picker uses.
+      listRawMaterialCosting(),
     ])
-      .then(([materialsResult, suppliersResult, categoriesResult]) => {
+      .then(([materialsResult, suppliersResult, categoriesResult, costingResult]) => {
         setMaterials(materialsResult);
         setSuppliers(suppliersResult);
         setCategories(categoriesResult);
+        setCostingById(new Map(costingResult.map((c) => [c.id, c])));
       })
       .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
@@ -106,6 +118,20 @@ export function RawMaterialsScreen({
       return key ? t(key) : code;
     },
     [t],
+  );
+
+  const priceLabel = useCallback(
+    (material: RawMaterial): string => {
+      const costing = costingById.get(material.id);
+      if (!costing) return "—";
+      try {
+        const resolved = resolveRawMaterialPrice(costing);
+        return `€${formatMoney(resolved.costPerBaseUnitMicros.toNumber())}/${unitLabel(material.base_unit_code)}`;
+      } catch {
+        return "—";
+      }
+    },
+    [costingById, unitLabel],
   );
 
   async function handleCreateCategory(name: string): Promise<Category> {
@@ -266,6 +292,7 @@ export function RawMaterialsScreen({
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.category")}</TableHead>
                 <TableHead>{t("rawMaterials.baseUnit")}</TableHead>
+                <TableHead>{t("rawMaterials.pricePerBaseUnit")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
                 <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
@@ -285,6 +312,7 @@ export function RawMaterialsScreen({
                   </TableCell>
                   <TableCell>{categoryName(material.category_id)}</TableCell>
                   <TableCell>{unitLabel(material.base_unit_code)}</TableCell>
+                  <TableCell>{priceLabel(material)}</TableCell>
                   <TableCell>
                     <Badge variant={material.is_active ? "success" : "destructive"}>
                       {material.is_active ? t("common.active") : t("common.archived")}
