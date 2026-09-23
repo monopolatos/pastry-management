@@ -32,6 +32,7 @@ const en = {
   "nav.recipes": "Recipes",
   "nav.categories": "Categories",
   "nav.costCalculator": "Cost Calculator",
+  "nav.analytics": "Analytics",
   "nav.backup": "Backup & Restore",
   "nav.settings": "Settings",
   "nav.profile": "User Profile",
@@ -383,6 +384,17 @@ const en = {
     "Some ingredients have no cost yet (missing purchase history or price) — totals below don't include them.",
   "recipes.noIngredientsYet": "No ingredients added yet.",
 
+  "analytics.totalRawMaterials": "Total Raw Materials",
+  "analytics.totalRecipes": "Total Recipes",
+  "analytics.mostExpensiveMaterials": "10 Most Expensive Materials",
+  "analytics.noPricedMaterials": "No materials with a resolvable price yet.",
+  "analytics.price": "Price",
+  "analytics.priceHistory": "Price History",
+  "analytics.selectItemPlaceholder": "Select a material or recipe…",
+  "analytics.noPurchaseHistory": "No purchase history recorded for this material yet.",
+  "analytics.noCostSnapshots":
+    "No cost snapshots saved yet for this recipe — save one from the recipe's cost breakdown to start tracking its price history.",
+
   "unitKind.weight": "weight",
   "unitKind.volume": "volume",
   "unitKind.count": "count",
@@ -396,6 +408,7 @@ const el: Record<keyof typeof en, string> = {
   "nav.recipes": "Συνταγές",
   "nav.categories": "Κατηγορίες",
   "nav.costCalculator": "Υπολογισμός Κόστους",
+  "nav.analytics": "Αναλυτικά Στοιχεία",
   "nav.backup": "Αντίγραφα Ασφαλείας",
   "nav.settings": "Ρυθμίσεις",
   "nav.profile": "Προφίλ Χρήστη",
@@ -750,6 +763,18 @@ const el: Record<keyof typeof en, string> = {
   "recipes.costIncompleteHint":
     "Ορισμένα συστατικά δεν έχουν ακόμη κόστος (χωρίς ιστορικό αγορών ή τιμή) — τα παρακάτω σύνολα δεν τα περιλαμβάνουν.",
   "recipes.noIngredientsYet": "Δεν έχουν προστεθεί συστατικά ακόμη.",
+
+  "analytics.totalRawMaterials": "Σύνολο Πρώτων Υλών",
+  "analytics.totalRecipes": "Σύνολο Συνταγών",
+  "analytics.mostExpensiveMaterials": "10 Ακριβότερα Υλικά",
+  "analytics.noPricedMaterials": "Δεν υπάρχουν ακόμη υλικά με υπολογίσιμη τιμή.",
+  "analytics.price": "Τιμή",
+  "analytics.priceHistory": "Ιστορικό Τιμών",
+  "analytics.selectItemPlaceholder": "Επιλέξτε πρώτη ύλη ή συνταγή…",
+  "analytics.noPurchaseHistory":
+    "Δεν έχει καταχωρηθεί ιστορικό αγορών για αυτή την πρώτη ύλη ακόμη.",
+  "analytics.noCostSnapshots":
+    "Δεν έχουν αποθηκευτεί στιγμιότυπα κόστους για αυτή τη συνταγή ακόμη — αποθηκεύστε ένα από την ανάλυση κόστους της συνταγής για να ξεκινήσει η παρακολούθηση του ιστορικού τιμών.",
 
   "unitKind.weight": "βάρος",
   "unitKind.volume": "όγκος",

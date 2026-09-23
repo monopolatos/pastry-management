@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  BarChart3,
   Calculator,
   ChefHat,
   CircleUser,
@@ -13,6 +14,7 @@ import {
   Wheat,
 } from "lucide-react";
 import * as authApi from "./api/auth";
+import { AnalyticsScreen } from "./components/analytics/AnalyticsScreen";
 import { AuthScreen } from "./components/auth/AuthScreen";
 import { BackupScreen } from "./components/backup/BackupScreen";
 import { CategoriesScreen } from "./components/categories/CategoriesScreen";
@@ -53,6 +55,7 @@ type Tab =
   | "recipes"
   | "categories"
   | "cost-calculator"
+  | "analytics"
   | "backup"
   | "settings"
   | "profile"
@@ -71,6 +74,7 @@ const NAV_ITEMS: NavItem[] = [
   { tab: "recipes", labelKey: "nav.recipes", icon: ChefHat },
   { tab: "categories", labelKey: "nav.categories", icon: Tags },
   { tab: "cost-calculator", labelKey: "nav.costCalculator", icon: Calculator },
+  { tab: "analytics", labelKey: "nav.analytics", icon: BarChart3 },
   { tab: "backup", labelKey: "nav.backup", icon: DatabaseBackup },
   { tab: "settings", labelKey: "nav.settings", icon: SettingsIcon },
   { tab: "profile", labelKey: "nav.profile", icon: CircleUser },
@@ -240,6 +244,7 @@ function App() {
           )}
           {activeTab === "categories" && <CategoriesScreen />}
           {activeTab === "cost-calculator" && <CostCalculatorScreen />}
+          {activeTab === "analytics" && <AnalyticsScreen />}
           {activeTab === "backup" && <BackupScreen />}
           {activeTab === "settings" && <SettingsScreen />}
           {activeTab === "profile" && <ProfileScreen session={session} />}
