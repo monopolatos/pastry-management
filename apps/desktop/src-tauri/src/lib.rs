@@ -201,6 +201,7 @@ pub fn run() {
             commands::recipes::delete_recipe,
             commands::recipes::duplicate_recipe,
             commands::recipes::get_recipe_costing_graph,
+            commands::recipes::list_raw_material_costing,
             commands::recipes::save_recipe_cost_snapshot,
             commands::recipes::list_recipe_cost_snapshots,
             commands::backup::get_backup_settings,

@@ -67,7 +67,7 @@ Dropbox cloud backup needs an app registered under **your own** Dropbox account 
 4. Under the **Settings** tab, find **OAuth 2** → **Redirect URIs** and add `http://127.0.0.1/callback` (the app negotiates the actual loopback port at connect time, but Dropbox only lets you whitelist the host+path, not a specific port — this is expected and works with Dropbox's loopback-redirect support for installed apps).
 5. Copy the **App key** shown at the top of the Settings tab (not the App secret — this app never uses or needs it, since PKCE is specifically designed so installed apps don't ship a client secret).
 6. In Pastry Management, go to Backup & Restore → Dropbox settings, paste the App key, save, then click **Connect to Dropbox** — your browser opens to Dropbox's sign-in/approval page, and the app picks up the result automatically once you approve.
-7. If you change permissions on the Permissions tab *after* already connecting once, the existing connection won't retroactively gain the new scope — click **Disconnect** then **Connect to Dropbox** again in the app to re-approve with the updated permissions.
+7. If you change permissions on the Permissions tab _after_ already connecting once, the existing connection won't retroactively gain the new scope — click **Disconnect** then **Connect to Dropbox** again in the app to re-approve with the updated permissions.
 
 ## 3. Automatic Update Strategy
 

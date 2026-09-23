@@ -205,6 +205,8 @@ export interface RecipeDetail {
   version_number: number;
   yield_quantity: number;
   yield_unit_code: string;
+  /** Optional — lets the UI derive a portion count / cost-per-portion for weight-yield recipes. */
+  grams_per_portion: number | null;
   ingredients: RecipeIngredient[];
   created_at: string;
   updated_at: string;
@@ -228,6 +230,7 @@ export interface RecipeInput {
   notes: string | null;
   yield_quantity: number;
   yield_unit_code: string;
+  grams_per_portion: number | null;
   ingredients: RecipeIngredientInput[];
 }
 

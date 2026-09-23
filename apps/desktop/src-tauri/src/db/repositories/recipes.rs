@@ -53,6 +53,8 @@ pub struct RecipeDetail {
     pub version_number: i64,
     pub yield_quantity: f64,
     pub yield_unit_code: String,
+    /// Optional — lets the UI derive a portion count / cost-per-portion for weight-yield recipes.
+    pub grams_per_portion: Option<f64>,
     pub ingredients: Vec<RecipeIngredient>,
     pub created_at: String,
     pub updated_at: String,
@@ -78,6 +80,7 @@ pub struct RecipeInput {
     pub notes: Option<String>,
     pub yield_quantity: f64,
     pub yield_unit_code: String,
+    pub grams_per_portion: Option<f64>,
     pub ingredients: Vec<RecipeIngredientInput>,
 }
 
@@ -303,9 +306,16 @@ fn insert_version_with_ingredients(
     )?;
 
     conn.execute(
-        "INSERT INTO recipe_versions (recipe_id, version_number, yield_quantity, yield_unit_code, created_by_user_id)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![recipe_id, next_version, input.yield_quantity, input.yield_unit_code, created_by_user_id],
+        "INSERT INTO recipe_versions (recipe_id, version_number, yield_quantity, yield_unit_code, grams_per_portion, created_by_user_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            recipe_id,
+            next_version,
+            input.yield_quantity,
+            input.yield_unit_code,
+            input.grams_per_portion,
+            created_by_user_id
+        ],
     )?;
     let version_id = conn.last_insert_rowid();
 
@@ -349,6 +359,14 @@ fn validate_recipe_fields(input: &RecipeInput) -> AppResult<()> {
             "ingredients",
             "A recipe needs at least one ingredient.",
         ));
+    }
+    if let Some(grams_per_portion) = input.grams_per_portion {
+        if grams_per_portion <= 0.0 {
+            return Err(AppError::field(
+                "grams_per_portion",
+                "Grams per portion must be greater than zero.",
+            ));
+        }
     }
     Ok(())
 }
@@ -454,6 +472,7 @@ struct RecipeHeaderRow {
     version_number: i64,
     yield_quantity: f64,
     yield_unit_code: String,
+    grams_per_portion: Option<f64>,
 }
 
 pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
@@ -461,7 +480,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
         .query_row(
             "SELECT r.id, r.name, r.description, r.category, r.instructions, r.prep_time_minutes,
                     r.cook_time_minutes, r.status, r.notes, r.created_at, r.updated_at,
-                    v.id, v.version_number, v.yield_quantity, v.yield_unit_code
+                    v.id, v.version_number, v.yield_quantity, v.yield_unit_code, v.grams_per_portion
              FROM recipes r
              JOIN recipe_versions v ON v.id = r.current_version_id
              WHERE r.id = ?1",
@@ -483,6 +502,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
                     version_number: row.get(12)?,
                     yield_quantity: row.get(13)?,
                     yield_unit_code: row.get(14)?,
+                    grams_per_portion: row.get(15)?,
                 })
             },
         )
@@ -505,6 +525,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
         version_number,
         yield_quantity,
         yield_unit_code,
+        grams_per_portion,
     } = header;
 
     struct IngredientRow {
@@ -584,6 +605,7 @@ pub fn get(conn: &Connection, id: i64) -> AppResult<RecipeDetail> {
         version_number,
         yield_quantity,
         yield_unit_code,
+        grams_per_portion,
         ingredients,
         created_at,
         updated_at,
@@ -663,6 +685,7 @@ pub fn duplicate(conn: &Connection, id: i64, new_name: Option<String>) -> AppRes
         notes: original.notes,
         yield_quantity: original.yield_quantity,
         yield_unit_code: original.yield_unit_code,
+        grams_per_portion: original.grams_per_portion,
         ingredients: original
             .ingredients
             .iter()
@@ -818,6 +841,65 @@ pub fn get_costing_graph(
     })
 }
 
+/// Costing data (purchase history + pricing strategy) for every ACTIVE raw material, regardless
+/// of whether any recipe currently references it. Unlike `get_costing_graph` (which only walks
+/// the ingredients an already-saved recipe has), this powers the recipe editor's live, client-side
+/// cost preview while the user is still picking ingredients for a recipe that may not be saved yet.
+pub fn get_all_raw_materials_costing(conn: &Connection) -> AppResult<Vec<CostingRawMaterial>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, base_unit_code, pricing_strategy, pricing_strategy_config
+         FROM raw_materials WHERE is_active = 1",
+    )?;
+    struct MaterialRow {
+        id: i64,
+        name: String,
+        base_unit_code: String,
+        pricing_strategy: String,
+        pricing_strategy_config: Option<String>,
+    }
+    let materials: Vec<MaterialRow> = stmt
+        .query_map([], |r| {
+            Ok(MaterialRow {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                base_unit_code: r.get(2)?,
+                pricing_strategy: r.get(3)?,
+                pricing_strategy_config: r.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut result = Vec::with_capacity(materials.len());
+    for m in materials {
+        let mut stmt = conn.prepare(
+            "SELECT p.purchase_date, p.cost_per_base_unit_micros, s.name
+             FROM purchase_records p
+             LEFT JOIN suppliers s ON s.id = p.supplier_id
+             WHERE p.raw_material_id = ?1 ORDER BY p.purchase_date DESC, p.id DESC",
+        )?;
+        let purchase_history: Vec<CostingPurchaseRecord> = stmt
+            .query_map([m.id], |r| {
+                Ok(CostingPurchaseRecord {
+                    purchase_date: r.get(0)?,
+                    cost_per_base_unit_micros: r.get(1)?,
+                    supplier_name: r.get(2)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        result.push(CostingRawMaterial {
+            id: m.id,
+            name: m.name,
+            base_unit_code: m.base_unit_code,
+            pricing_strategy: m.pricing_strategy,
+            pricing_strategy_config: m.pricing_strategy_config,
+            purchase_history,
+        });
+    }
+
+    Ok(result)
+}
+
 pub fn save_cost_snapshot(
     conn: &Connection,
     recipe_id: i64,
@@ -885,6 +967,8 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../../../migrations/0007_categories.sql"))
             .unwrap();
+        conn.execute_batch(include_str!("../../../migrations/0008_recipe_portions.sql"))
+            .unwrap();
         conn
     }
 
@@ -917,6 +1001,7 @@ mod tests {
             notes: None,
             yield_quantity: 800.0,
             yield_unit_code: "g".into(),
+            grams_per_portion: None,
             ingredients: vec![RecipeIngredientInput {
                 ingredient_type: "raw_material".into(),
                 raw_material_id: Some(material_id),
@@ -1001,6 +1086,7 @@ mod tests {
             notes: None,
             yield_quantity: 10.0,
             yield_unit_code: "piece".into(),
+            grams_per_portion: None,
             ingredients: vec![RecipeIngredientInput {
                 ingredient_type: "recipe".into(),
                 raw_material_id: None,
@@ -1028,6 +1114,7 @@ mod tests {
             notes: None,
             yield_quantity: 1.0,
             yield_unit_code: "piece".into(),
+            grams_per_portion: None,
             ingredients: vec![RecipeIngredientInput {
                 ingredient_type: "recipe".into(),
                 raw_material_id: None,
@@ -1092,6 +1179,7 @@ mod tests {
             notes: None,
             yield_quantity: 1.0,
             yield_unit_code: "piece".into(),
+            grams_per_portion: None,
             ingredients: vec![RecipeIngredientInput {
                 ingredient_type: "recipe".into(),
                 raw_material_id: None,
@@ -1119,6 +1207,7 @@ mod tests {
             notes: None,
             yield_quantity: 1.0,
             yield_unit_code: "piece".into(),
+            grams_per_portion: None,
             ingredients: vec![RecipeIngredientInput {
                 ingredient_type: "recipe".into(),
                 raw_material_id: None,
@@ -1160,6 +1249,7 @@ mod tests {
             notes: None,
             yield_quantity: 10.0,
             yield_unit_code: "piece".into(),
+            grams_per_portion: None,
             ingredients: vec![RecipeIngredientInput {
                 ingredient_type: "recipe".into(),
                 raw_material_id: None,

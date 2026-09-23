@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { RecipeCostingGraph } from "@pastry-management/core";
+import type { CostingRawMaterial, RecipeCostingGraph } from "@pastry-management/core";
 import type { CostSnapshotSummary, RecipeDetail, RecipeInput, RecipeSummary } from "./types";
 
 /**
@@ -47,6 +47,15 @@ export function duplicateRecipe(id: number, newName: string | null): Promise<Rec
 
 export function getRecipeCostingGraph(id: number): Promise<RecipeCostingGraph> {
   return invoke("get_recipe_costing_graph", { id });
+}
+
+/**
+ * Costing data (purchase history + pricing strategy) for every active raw material, regardless of
+ * whether any recipe currently references it — powers the recipe editor's live cost preview while
+ * ingredients are still being picked for a recipe that may not be saved yet.
+ */
+export function listRawMaterialCosting(): Promise<CostingRawMaterial[]> {
+  return invoke("list_raw_material_costing");
 }
 
 /**

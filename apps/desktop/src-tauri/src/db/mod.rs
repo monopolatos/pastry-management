@@ -46,6 +46,11 @@ const MIGRATIONS: &[(i64, &str, &str)] = &[
         "categories",
         include_str!("../../migrations/0007_categories.sql"),
     ),
+    (
+        8,
+        "recipe_portions",
+        include_str!("../../migrations/0008_recipe_portions.sql"),
+    ),
 ];
 
 #[derive(Debug, Error)]
@@ -241,7 +246,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 7);
+        assert_eq!(applied, 8);
 
         drop(conn);
         let _ = fs::remove_file(&path);
@@ -261,7 +266,7 @@ mod tests {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(applied, 7, "migrations should not be re-applied");
+        assert_eq!(applied, 8, "migrations should not be re-applied");
 
         drop(conn);
         let _ = fs::remove_file(&path);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { CostingRawMaterial } from "@pastry-management/core";
 import { listMeasurementUnits } from "../../api/measurementUnits";
 import { listRawMaterials } from "../../api/rawMaterials";
 import * as recipesApi from "../../api/recipes";
@@ -49,6 +50,7 @@ export function RecipesScreen() {
   // backend rejects that anyway; see recipes.rs validate_ingredient).
   const [activeRecipes, setActiveRecipes] = useState<RecipeSummary[]>([]);
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
+  const [rawMaterialCosting, setRawMaterialCosting] = useState<CostingRawMaterial[]>([]);
   const [units, setUnits] = useState<MeasurementUnit[]>([]);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -65,12 +67,14 @@ export function RecipesScreen() {
       recipesApi.listRecipes(false),
       listRawMaterials(false),
       listMeasurementUnits(),
+      recipesApi.listRawMaterialCosting(),
     ])
-      .then(([recipesResult, activeResult, materialsResult, unitsResult]) => {
+      .then(([recipesResult, activeResult, materialsResult, unitsResult, costingResult]) => {
         setRecipes(recipesResult);
         setActiveRecipes(activeResult);
         setRawMaterials(materialsResult);
         setUnits(unitsResult);
+        setRawMaterialCosting(costingResult);
       })
       .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
@@ -192,6 +196,7 @@ export function RecipesScreen() {
             <RecipeForm
               categories={categories}
               rawMaterials={rawMaterials}
+              rawMaterialCosting={rawMaterialCosting}
               recipeOptions={activeRecipes}
               units={units}
               onSubmit={handleCreate}
@@ -211,6 +216,7 @@ export function RecipesScreen() {
               initial={panel.recipe}
               categories={categories}
               rawMaterials={rawMaterials}
+              rawMaterialCosting={rawMaterialCosting}
               recipeOptions={activeRecipes.filter((r) => r.id !== panel.recipe.id)}
               units={units}
               onSubmit={(input) => handleUpdate(panel.recipe.id, input)}

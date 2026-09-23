@@ -2,7 +2,8 @@ use tauri::State;
 
 use crate::auth::SessionState;
 use crate::db::repositories::recipes::{
-    self, CostSnapshotSummary, RecipeCostingGraph, RecipeDetail, RecipeInput, RecipeSummary,
+    self, CostSnapshotSummary, CostingRawMaterial, RecipeCostingGraph, RecipeDetail, RecipeInput,
+    RecipeSummary,
 };
 use crate::error::{AppError, AppResult};
 use crate::DbState;
@@ -83,6 +84,12 @@ pub fn duplicate_recipe(
 pub fn get_recipe_costing_graph(db: State<DbState>, id: i64) -> AppResult<RecipeCostingGraph> {
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::get_costing_graph(&conn, id)
+}
+
+#[tauri::command]
+pub fn list_raw_material_costing(db: State<DbState>) -> AppResult<Vec<CostingRawMaterial>> {
+    let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
+    recipes::get_all_raw_materials_costing(&conn)
 }
 
 #[tauri::command]
