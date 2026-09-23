@@ -78,9 +78,8 @@ const en = {
   "dashboard.backupStatus": "Backup Status",
   "dashboard.backupNotConfigured":
     "No automatic backup is set up yet — configure one in Backup & Restore.",
-  "dashboard.localBackupEnabled": "Local auto-backup: {frequency}",
+  "dashboard.localBackup": "Local backup",
   "dashboard.dropboxConnected": "Connected to Dropbox",
-  "dashboard.dropboxAutoBackupEnabled": "Dropbox auto-backup: {frequency}",
   "dashboard.lastBackupAt": "Last backup: {datetime}",
   "dashboard.noBackupRunYet": "No automatic backup has run yet.",
   "dashboard.loadError": "Could not load dashboard data.",
@@ -441,9 +440,8 @@ const el: Record<keyof typeof en, string> = {
   "dashboard.backupStatus": "Κατάσταση Αντιγράφων Ασφαλείας",
   "dashboard.backupNotConfigured":
     "Δεν έχει ρυθμιστεί αυτόματο αντίγραφο ασφαλείας — ρυθμίστε ένα στα Αντίγραφα Ασφαλείας.",
-  "dashboard.localBackupEnabled": "Τοπικό αυτόματο αντίγραφο: {frequency}",
+  "dashboard.localBackup": "Τοπικό αντίγραφο",
   "dashboard.dropboxConnected": "Συνδεδεμένο με το Dropbox",
-  "dashboard.dropboxAutoBackupEnabled": "Αυτόματο αντίγραφο Dropbox: {frequency}",
   "dashboard.lastBackupAt": "Τελευταίο αντίγραφο: {datetime}",
   "dashboard.noBackupRunYet": "Δεν έχει εκτελεστεί ακόμη αυτόματο αντίγραφο ασφαλείας.",
   "dashboard.loadError": "Δεν ήταν δυνατή η φόρτωση των δεδομένων του πίνακα ελέγχου.",

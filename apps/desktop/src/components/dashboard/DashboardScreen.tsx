@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DatabaseBackup, Plus } from "lucide-react";
+import { ChefHat, Cloud, DatabaseBackup, HardDrive, Plus, Tag } from "lucide-react";
 import { getBackupSettings } from "../../api/backup";
 import { getDropboxSettings } from "../../api/cloudBackup";
 import { listRawMaterials } from "../../api/rawMaterials";
@@ -14,6 +14,7 @@ import type {
   RecipeSummary,
 } from "../../api/types";
 import { formatDateTime } from "../backup/format";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
@@ -183,13 +184,26 @@ export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScre
             ) : recentRecipes.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("dashboard.noRecentRecipes")}</p>
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col">
                 {recentRecipes.map((recipe) => (
-                  <li key={recipe.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate font-medium">{recipe.name}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {formatDate(recipe.updated_at)}
+                  <li
+                    key={recipe.id}
+                    className="flex items-center gap-3 border-b py-2.5 text-sm transition-colors last:border-0 hover:bg-muted/50"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <ChefHat className="size-4" />
                     </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{recipe.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(recipe.updated_at)}
+                      </p>
+                    </div>
+                    {recipe.category && (
+                      <Badge variant="secondary" className="shrink-0">
+                        {recipe.category}
+                      </Badge>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -211,13 +225,23 @@ export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScre
             ) : recentPurchases.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("dashboard.noRecentPurchases")}</p>
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col">
                 {recentPurchases.map((purchase) => (
-                  <li key={purchase.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate font-medium">{purchase.raw_material_name}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      €{formatMoney(purchase.cost_per_base_unit_micros)}/{purchase.base_unit_code} —{" "}
-                      {formatDate(purchase.purchase_date)}
+                  <li
+                    key={purchase.id}
+                    className="flex items-center gap-3 border-b py-2.5 text-sm transition-colors last:border-0 hover:bg-muted/50"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Tag className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{purchase.raw_material_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(purchase.purchase_date)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                      €{formatMoney(purchase.cost_per_base_unit_micros)}/{purchase.base_unit_code}
                     </span>
                   </li>
                 ))}
@@ -240,35 +264,46 @@ export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScre
           ) : !backupConfigured ? (
             <p className="text-sm text-muted-foreground">{t("dashboard.backupNotConfigured")}</p>
           ) : (
-            <div className="flex flex-col gap-1 text-sm">
+            <div className="flex flex-col gap-2">
               {localAutoBackupOn && (
-                <p>
-                  {t("dashboard.localBackupEnabled").replace(
-                    "{frequency}",
-                    frequencyLabel(backupSettings?.auto_backup_frequency ?? null),
-                  )}
-                  {" — "}
-                  {backupSettings?.last_auto_backup_at
-                    ? t("dashboard.lastBackupAt").replace(
-                        "{datetime}",
-                        formatDateTime(backupSettings.last_auto_backup_at),
-                      )
-                    : t("dashboard.noBackupRunYet")}
-                </p>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <HardDrive className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{t("dashboard.localBackup")}</span>
+                      <Badge variant="success">
+                        {frequencyLabel(backupSettings?.auto_backup_frequency ?? null)}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {backupSettings?.last_auto_backup_at
+                        ? t("dashboard.lastBackupAt").replace(
+                            "{datetime}",
+                            formatDateTime(backupSettings.last_auto_backup_at),
+                          )
+                        : t("dashboard.noBackupRunYet")}
+                    </p>
+                  </div>
+                </div>
               )}
               {dropboxConnected && (
-                <p>
-                  {t("dashboard.dropboxConnected")}
-                  {dropboxAutoBackupOn && (
-                    <>
-                      {" — "}
-                      {t("dashboard.dropboxAutoBackupEnabled").replace(
-                        "{frequency}",
-                        frequencyLabel(dropboxStatus?.settings.auto_backup_frequency ?? null),
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Cloud className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{t("dashboard.dropboxConnected")}</span>
+                      {dropboxAutoBackupOn && (
+                        <Badge variant="success">
+                          {frequencyLabel(dropboxStatus?.settings.auto_backup_frequency ?? null)}
+                        </Badge>
                       )}
-                    </>
-                  )}
-                </p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
