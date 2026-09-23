@@ -145,14 +145,23 @@ export function CostCalculatorScreen() {
             <RecipeCostBreakdown breakdown={breakdown} />
 
             {servings != null && costPerServingMicros != null && (
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-                <dt className="font-medium text-muted-foreground">
-                  {t("recipes.numberOfPortions")}
-                </dt>
-                <dd>{servings.toFixed(1)}</dd>
-                <dt className="font-medium text-muted-foreground">{t("recipes.costPerPortion")}</dt>
-                <dd className="font-semibold">€{formatMoney(costPerServingMicros)}</dd>
-              </dl>
+              <div className="flex flex-col gap-1.5">
+                <h4 className="text-sm font-semibold">{t("recipes.results")}</h4>
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+                  <dt className="font-medium text-muted-foreground">
+                    {t("recipes.gramsPerPortion")}
+                  </dt>
+                  <dd>{gramsPerPortion} g</dd>
+                  <dt className="font-medium text-muted-foreground">
+                    {t("recipes.numberOfPortions")}
+                  </dt>
+                  <dd>{servings.toFixed(1)}</dd>
+                  <dt className="font-medium text-muted-foreground">
+                    {t("recipes.costPerPortion")}
+                  </dt>
+                  <dd className="font-semibold">€{formatMoney(costPerServingMicros)}</dd>
+                </dl>
+              </div>
             )}
           </CardContent>
         </Card>
