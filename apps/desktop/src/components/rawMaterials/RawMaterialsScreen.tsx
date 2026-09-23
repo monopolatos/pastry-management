@@ -40,7 +40,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
 
-function formatMoney(micros: number, digits = 4): string {
+function formatMoney(micros: number, digits: number): string {
   return (micros / 1_000_000).toFixed(digits);
 }
 
@@ -126,7 +126,7 @@ export function RawMaterialsScreen({
       if (!costing) return "—";
       try {
         const resolved = resolveRawMaterialPrice(costing);
-        return `€${formatMoney(resolved.costPerBaseUnitMicros.toNumber())}/${unitLabel(material.base_unit_code)}`;
+        return `€${formatMoney(resolved.costPerBaseUnitMicros.toNumber(), 2)}/${unitLabel(material.base_unit_code)}`;
       } catch {
         return "—";
       }
