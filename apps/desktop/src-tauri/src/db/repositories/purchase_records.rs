@@ -121,7 +121,14 @@ fn validate_and_compute_cost(conn: &Connection, input: &PurchaseRecordInput) -> 
         ));
     }
 
-    let quantity_in_base_units = input.quantity * purchase_unit.to_base_factor;
+    // `to_base_factor` converts a unit to the *global canonical* unit for its kind (g/ml/piece —
+    // see measurement_units seed data), not to the material's own `base_unit_code`. A material can
+    // itself be tracked in a non-canonical unit (e.g. base_unit_code = "kg"), so the purchased
+    // quantity must be converted all the way through the canonical unit and back down into the
+    // material's base unit — dividing by `material_unit.to_base_factor` too, not just multiplying
+    // by `purchase_unit.to_base_factor` — mirroring packages/core's `convertQuantity`.
+    let quantity_in_base_units =
+        input.quantity * purchase_unit.to_base_factor / material_unit.to_base_factor;
     let cost_per_base_unit_micros =
         (input.total_price_micros as f64 / quantity_in_base_units).round() as i64;
 
@@ -303,6 +310,109 @@ mod tests {
 
         // €2.50 / 1000g = €0.0025/g = 2500 micros/g
         assert_eq!(record.cost_per_base_unit_micros, 2500);
+    }
+
+    /// Regression test for a real bug: when the material's own `base_unit_code` is NOT the
+    /// canonical unit for its kind (e.g. "kg" instead of "g"), `quantity_in_base_units` must also
+    /// divide by the material unit's `to_base_factor`, or the stored cost-per-base-unit ends up
+    /// 1000x too small (total price divided by the wrong denominator).
+    #[test]
+    fn kg_based_material_is_not_divided_by_the_wrong_factor() {
+        let conn = test_conn();
+        let supplier = suppliers::create(
+            &conn,
+            suppliers::SupplierInput {
+                name: "Acme".into(),
+                contact_person: None,
+                phone: None,
+                email: None,
+                address: None,
+                vat_number: None,
+                notes: None,
+            },
+        )
+        .unwrap();
+        let material = raw_materials::create(
+            &conn,
+            raw_materials::RawMaterialInput {
+                name: "Venus Base 150".into(),
+                description: None,
+                category_id: None,
+                base_unit_code: "kg".into(),
+                default_supplier_id: None,
+                pricing_strategy: "latest".into(),
+                pricing_strategy_config: None,
+                notes: None,
+            },
+        )
+        .unwrap();
+
+        let record = create(
+            &conn,
+            PurchaseRecordInput {
+                raw_material_id: material.id,
+                supplier_id: Some(supplier.id),
+                purchase_date: "2026-01-15".into(),
+                quantity: 1.0,
+                purchase_unit_code: "kg".into(),
+                total_price_micros: 9_500_000, // €9.50
+                expiration_date: None,
+                notes: None,
+            },
+            None,
+        )
+        .unwrap();
+
+        // 1 kg for €9.50, material tracked per kg -> €9.50/kg, not €0.0095/kg.
+        assert_eq!(record.cost_per_base_unit_micros, 9_500_000);
+    }
+
+    /// Regression test for migrations/0009_fix_kg_l_purchase_costs.sql, the backfill for
+    /// already-stored rows affected by the same bug (see `kg_based_material_is_not_divided_by_
+    /// the_wrong_factor` above) — historical data needs correcting too, since
+    /// `cost_per_base_unit_micros` is stored, not recomputed on read.
+    #[test]
+    fn migration_0009_backfills_kg_based_materials_previously_stored_at_1000x_too_small() {
+        let conn = test_conn();
+        let material = raw_materials::create(
+            &conn,
+            raw_materials::RawMaterialInput {
+                name: "Venus Base 150".into(),
+                description: None,
+                category_id: None,
+                base_unit_code: "kg".into(),
+                default_supplier_id: None,
+                pricing_strategy: "latest".into(),
+                pricing_strategy_config: None,
+                notes: None,
+            },
+        )
+        .unwrap();
+
+        // Simulate a row written by the old buggy formula: €9.50 for 1kg, stored as if the total
+        // price were divided only by the purchase unit's canonical factor (1000), i.e. 9500
+        // micros instead of the correct 9_500_000.
+        conn.execute(
+            "INSERT INTO purchase_records
+                (raw_material_id, purchase_date, quantity, purchase_unit_code, total_price_micros, cost_per_base_unit_micros)
+             VALUES (?1, '2026-01-15', 1.0, 'kg', 9500000, 9500)",
+            [material.id],
+        )
+        .unwrap();
+
+        conn.execute_batch(include_str!(
+            "../../../migrations/0009_fix_kg_l_purchase_costs.sql"
+        ))
+        .unwrap();
+
+        let corrected: i64 = conn
+            .query_row(
+                "SELECT cost_per_base_unit_micros FROM purchase_records WHERE raw_material_id = ?1",
+                [material.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(corrected, 9_500_000);
     }
 
     #[test]
