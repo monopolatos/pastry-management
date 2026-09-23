@@ -33,8 +33,11 @@ function SummaryList({ title, items }: { title: string; items: string[] }) {
         {title} ({items.length})
       </p>
       <ul className="max-h-32 list-disc overflow-y-auto pl-5 text-sm text-muted-foreground">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
+        {items.map((item, idx) => (
+          // Index-based key is safe here: a static, one-off report snapshot, never reordered or
+          // edited in place — and the source data can legitimately contain duplicate names (e.g.
+          // the same product name appearing twice in the imported spreadsheet).
+          <li key={idx}>{item}</li>
         ))}
       </ul>
     </div>
