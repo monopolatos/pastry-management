@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { calculateRecipeCost } from "@pastry-management/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { buildUnitsByCode, calculateRecipeCost, convertQuantity } from "@pastry-management/core";
 import type { CostBreakdown, RecipeCostingGraph } from "@pastry-management/core";
 import { toast } from "sonner";
 import * as recipesApi from "../../api/recipes";
@@ -91,6 +91,31 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
     return graph?.raw_materials.find((rm) => rm.id === rawMaterialId)?.base_unit_code ?? "";
   }
 
+  // Servings (and cost/serving) only make sense for a weight-yield recipe with grams_per_portion
+  // set — same rule the recipe editor's live preview uses (RecipeForm.tsx).
+  const servings = useMemo(() => {
+    if (!graph || recipe.grams_per_portion == null || recipe.grams_per_portion <= 0) return null;
+    const yieldUnitKind = graph.units.find((u) => u.code === recipe.yield_unit_code)?.kind;
+    if (yieldUnitKind !== "weight") return null;
+    try {
+      const unitsByCode = buildUnitsByCode(graph.units);
+      const totalGrams = convertQuantity(
+        recipe.yield_quantity,
+        recipe.yield_unit_code,
+        "g",
+        unitsByCode,
+      ).toNumber();
+      return totalGrams / recipe.grams_per_portion;
+    } catch {
+      return null;
+    }
+  }, [graph, recipe.yield_quantity, recipe.yield_unit_code, recipe.grams_per_portion]);
+
+  const costPerServingMicros =
+    servings != null && servings > 0 && breakdown != null
+      ? breakdown.totalCostMicros / servings
+      : null;
+
   async function handleSaveCost() {
     if (!breakdown) return;
     setSaving(true);
@@ -137,6 +162,14 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
             <dd>
               {recipe.yield_quantity} {recipe.yield_unit_code}
             </dd>
+            {recipe.grams_per_portion != null && (
+              <>
+                <dt className="font-medium text-muted-foreground">
+                  {t("recipes.gramsPerPortion")}
+                </dt>
+                <dd>{recipe.grams_per_portion} g</dd>
+              </>
+            )}
             <dt className="font-medium text-muted-foreground">{t("recipes.prepTime")}</dt>
             <dd>
               {recipe.prep_time_minutes != null
@@ -222,6 +255,17 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
         {!costLoading && !costError && breakdown && (
           <>
             <RecipeCostBreakdown breakdown={breakdown} />
+
+            {servings != null && costPerServingMicros != null && (
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+                <dt className="font-medium text-muted-foreground">
+                  {t("recipes.numberOfPortions")}
+                </dt>
+                <dd>{servings.toFixed(1)}</dd>
+                <dt className="font-medium text-muted-foreground">{t("recipes.costPerPortion")}</dt>
+                <dd className="font-semibold">€{formatMoney(costPerServingMicros)}</dd>
+              </dl>
+            )}
 
             <div>
               <h4 className="text-sm font-semibold">{t("recipes.pricesUsed")}</h4>
