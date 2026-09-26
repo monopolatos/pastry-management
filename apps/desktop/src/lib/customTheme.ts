@@ -11,6 +11,12 @@
  * `--sidebar` together, since nearly all visible content sits inside a Card/Popover/Sidebar, each
  * with its own surface-color variable. Applying only `--background` would leave most of the app
  * looking unchanged.
+ *
+ * Some roles also drive DERIVED (not identical-copy) variables — see DERIVED_VARS — because a
+ * plain copy would look wrong: a picked "primary" needs *contrasting* button text, not text the
+ * same color as the button, and a picked "background" needs borders that are a shade apart from
+ * it, not literally the same color (which would make every border invisible) or left at their old
+ * fixed color (which clashes once the background is no longer near-white).
  */
 
 export type CustomThemeRole = "primary" | "background" | "text" | "labels";
@@ -26,11 +32,62 @@ const CUSTOM_THEME_VAR_MAP: Record<CustomThemeRole, string[]> = {
   labels: ["--muted-foreground"],
 };
 
-/** Vars whose readable-text counterpart must be recomputed (not just copied) whenever this role's
- * color changes, since e.g. a light "primary" needs dark text on it and vice versa. Each entry's
- * foreground var is set to whichever of black/white contrasts better with the picked color. */
-const CONTRAST_FOREGROUND_VARS: Partial<Record<CustomThemeRole, string[]>> = {
-  primary: ["--primary-foreground", "--sidebar-primary-foreground"],
+function clamp255(n: number): number {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+function parseHex(hex: string): [number, number, number] | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+  const int = parseInt(match[1], 16);
+  return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
+}
+
+function toHex(r: number, g: number, b: number): string {
+  return `#${[r, g, b].map((c) => clamp255(c).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Perceived brightness (YIQ heuristic), 0-255. Good enough for light/dark UI decisions, not a
+ * full WCAG contrast calculation. */
+function brightnessOf(r: number, g: number, b: number): number {
+  return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
+/** Given a `#rrggbb` color, returns whichever of black/white gives better contrast against it —
+ * e.g. legible text on a button/badge painted with that color. */
+function readableForegroundFor(hex: string): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return "#ffffff";
+  return brightnessOf(...rgb) >= 140 ? "#000000" : "#ffffff";
+}
+
+/** A border/input shade that stays visibly (but subtly) separated from a custom background:
+ * darkened a bit for a light background, lightened more for a dark one (dark surfaces need a
+ * bigger nudge to read as a distinct border at all). A fixed border color would either nearly
+ * vanish or badly clash depending on how light/dark the picked background is. */
+function deriveBorderShade(hex: string): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  const [r, g, b] = rgb;
+  const isLight = brightnessOf(r, g, b) >= 140;
+  const target = isLight ? 0 : 255;
+  const amount = isLight ? 0.12 : 0.22;
+  return toHex(r + (target - r) * amount, g + (target - g) * amount, b + (target - b) * amount);
+}
+
+/** Variables a role drives with a DERIVED value (via `derive`) rather than a plain copy of the
+ * picked color — see the module doc comment for why. */
+const DERIVED_VARS: Partial<
+  Record<CustomThemeRole, { vars: string[]; derive: (hex: string) => string }>
+> = {
+  primary: {
+    vars: ["--primary-foreground", "--sidebar-primary-foreground"],
+    derive: readableForegroundFor,
+  },
+  background: {
+    vars: ["--border", "--input", "--sidebar-border"],
+    derive: deriveBorderShade,
+  },
 };
 
 export function readCustomTheme(): CustomThemeColors {
@@ -50,20 +107,6 @@ export function readCustomTheme(): CustomThemeColors {
   }
 }
 
-/** Given a `#rrggbb` color, returns whichever of black/white gives better contrast against it, per
- * the standard perceived-brightness (YIQ) heuristic — good enough for picking legible button/badge
- * text, not a full WCAG contrast calculation. */
-function readableForegroundFor(hex: string): string {
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!match) return "#ffffff";
-  const int = parseInt(match[1], 16);
-  const r = (int >> 16) & 255;
-  const g = (int >> 8) & 255;
-  const b = int & 255;
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness >= 140 ? "#000000" : "#ffffff";
-}
-
 /** Applies the given colors as inline CSS variable overrides on `<html>`. A role missing from
  * `colors` is left untouched — pass `{}` to apply nothing, or use `clearCustomThemeRole` to
  * remove a single role's override. */
@@ -78,11 +121,11 @@ export function applyCustomTheme(colors: CustomThemeColors): void {
     for (const cssVar of vars) {
       root.style.setProperty(cssVar, value);
     }
-    const foregroundVars = CONTRAST_FOREGROUND_VARS[role];
-    if (foregroundVars) {
-      const foreground = readableForegroundFor(value);
-      for (const cssVar of foregroundVars) {
-        root.style.setProperty(cssVar, foreground);
+    const derived = DERIVED_VARS[role];
+    if (derived) {
+      const derivedValue = derived.derive(value);
+      for (const cssVar of derived.vars) {
+        root.style.setProperty(cssVar, derivedValue);
       }
     }
   }
@@ -112,7 +155,7 @@ export function clearCustomThemeRole(role: CustomThemeRole): CustomThemeColors {
   for (const cssVar of CUSTOM_THEME_VAR_MAP[role]) {
     root.style.removeProperty(cssVar);
   }
-  for (const cssVar of CONTRAST_FOREGROUND_VARS[role] ?? []) {
+  for (const cssVar of DERIVED_VARS[role]?.vars ?? []) {
     root.style.removeProperty(cssVar);
   }
   const current = readCustomTheme();
@@ -129,8 +172,8 @@ export function resetCustomTheme(): void {
       root.style.removeProperty(cssVar);
     }
   }
-  for (const vars of Object.values(CONTRAST_FOREGROUND_VARS)) {
-    for (const cssVar of vars ?? []) {
+  for (const derived of Object.values(DERIVED_VARS)) {
+    for (const cssVar of derived?.vars ?? []) {
       root.style.removeProperty(cssVar);
     }
   }
