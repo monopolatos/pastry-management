@@ -35,7 +35,7 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
 }
 
-function formatMoney(value: number, digits = 4): string {
+function formatMoney(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
 

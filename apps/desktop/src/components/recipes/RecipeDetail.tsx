@@ -272,7 +272,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
               <ul className="mt-1 flex flex-col gap-0.5 text-sm text-muted-foreground">
                 {breakdown.pricingStrategyUsed.map((entry) => (
                   <li key={entry.rawMaterialId}>
-                    {entry.rawMaterialName}: €{formatMoney(entry.costPerBaseUnitMicros, 4)}/
+                    {entry.rawMaterialName}: €{formatMoney(entry.costPerBaseUnitMicros)}/
                     {rawMaterialBaseUnit(entry.rawMaterialId)} (
                     {translateErrorMessage(entry.sourceDescription, locale)})
                   </li>

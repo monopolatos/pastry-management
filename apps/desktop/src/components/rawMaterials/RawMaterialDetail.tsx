@@ -149,7 +149,7 @@ export function RawMaterialDetail({
                       {record.quantity} {unitLabel(record.purchase_unit_code)}
                     </TableCell>
                     <TableCell>€{formatMoney(record.total_price_micros, 2)}</TableCell>
-                    <TableCell>€{formatMoney(record.cost_per_base_unit_micros, 4)}</TableCell>
+                    <TableCell>€{formatMoney(record.cost_per_base_unit_micros, 2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -31,8 +31,8 @@ interface DashboardScreenProps {
   onAddRecipe: () => void;
 }
 
-function formatMoney(micros: number, digits = 4): string {
-  return (micros / 1_000_000).toFixed(digits);
+function formatMoney(micros: number): string {
+  return (micros / 1_000_000).toFixed(2);
 }
 
 function formatDate(iso: string): string {
