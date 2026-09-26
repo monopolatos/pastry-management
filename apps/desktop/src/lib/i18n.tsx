@@ -193,10 +193,16 @@ const en = {
 
   "settings.themeEditor": "Color Customization",
   "settings.themeEditorHint":
-    "Pick your own colors for the app's background, text, and labels. These are saved on this device and apply on top of the theme above, in both light and dark mode.",
+    "Pick your own colors for the app's brand accent, background, text, and labels. These are saved on this device and apply on top of the theme above, in both light and dark mode.",
+  "settings.themeEditorPrimary": "Brand color",
   "settings.themeEditorBackground": "Background",
   "settings.themeEditorText": "Text",
   "settings.themeEditorLabels": "Labels",
+  "settings.themeEditorClearRole": "Clear this color",
+  "settings.themeEditorPrimaryPresets": "Quick picks",
+  "settings.themeEditorPreview": "Preview",
+  "settings.themeEditorPreviewText": "Sample text",
+  "settings.themeEditorPreviewLabel": "Sample label",
   "settings.themeEditorReset": "Reset to defaults",
   "settings.themeEditorResetSuccess": "Colors reset to default.",
 
@@ -571,10 +577,16 @@ const el: Record<keyof typeof en, string> = {
 
   "settings.themeEditor": "Προσαρμογή Χρωμάτων",
   "settings.themeEditorHint":
-    "Επιλέξτε τα δικά σας χρώματα για το φόντο, το κείμενο και τις ετικέτες της εφαρμογής. Αποθηκεύονται σε αυτή τη συσκευή και εφαρμόζονται πάνω από το θέμα παραπάνω, τόσο σε φωτεινή όσο και σε σκοτεινή λειτουργία.",
+    "Επιλέξτε τα δικά σας χρώματα για το βασικό χρώμα, το φόντο, το κείμενο και τις ετικέτες της εφαρμογής. Αποθηκεύονται σε αυτή τη συσκευή και εφαρμόζονται πάνω από το θέμα παραπάνω, τόσο σε φωτεινή όσο και σε σκοτεινή λειτουργία.",
+  "settings.themeEditorPrimary": "Βασικό χρώμα",
   "settings.themeEditorBackground": "Φόντο",
   "settings.themeEditorText": "Κείμενο",
   "settings.themeEditorLabels": "Ετικέτες",
+  "settings.themeEditorClearRole": "Καθαρισμός αυτού του χρώματος",
+  "settings.themeEditorPrimaryPresets": "Γρήγορες επιλογές",
+  "settings.themeEditorPreview": "Προεπισκόπηση",
+  "settings.themeEditorPreviewText": "Δείγμα κειμένου",
+  "settings.themeEditorPreviewLabel": "Δείγμα ετικέτας",
   "settings.themeEditorReset": "Επαναφορά προεπιλογών",
   "settings.themeEditorResetSuccess": "Τα χρώματα επαναφέρθηκαν στα προεπιλεγμένα.",
 
