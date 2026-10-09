@@ -1,7 +1,8 @@
 //! Excel import for categories and raw materials ("products"), from a two-sheet `.xlsx` workbook:
-//! sheet index 0 = products (a header row, then Name / Category / Purchase price €/kg / ... /
-//! Comments columns — only name, category, price, and comments are read; any other columns are
-//! ignored), sheet index 1 = categories (no header, one category name per row).
+//! sheet index 0 = products (a header row, then Name / Category / Purchase price €/kg / Purchase
+//! price €/piece / Purchase price €/liter / Waste % / Comments columns — only name, category, the
+//! three prices, and comments are read; the waste-% column is intentionally ignored, see
+//! docs/database-schema.md), sheet index 1 = categories (no header, one category name per row).
 //!
 //! Parsing (this module) is kept separate from the database side effects (`commands::import`) so
 //! the row-extraction logic can be unit-tested against an in-memory `Range` without needing a real
@@ -15,6 +16,8 @@ pub struct ParsedProductRow {
     pub name: String,
     pub category_name: Option<String>,
     pub price_per_kg: Option<f64>,
+    pub price_per_piece: Option<f64>,
+    pub price_per_liter: Option<f64>,
     pub notes: Option<String>,
 }
 
@@ -45,8 +48,11 @@ pub fn parse_categories(range: &Range<Data>) -> Vec<String> {
 
 /// Sheet index 0: row 0 is a header and is always skipped. Columns, by position: 0 = name
 /// (required — rows with no name are skipped entirely), 1 = category name, 2 = purchase price in
-/// €/kg, 4 = free-text comments (column 3, waste/shrinkage %, is intentionally not imported — see
-/// docs/database-schema.md's raw materials section).
+/// €/kg, 3 = purchase price in €/piece, 4 = purchase price in €/liter, 6 = free-text comments
+/// (column 5, waste/shrinkage %, is intentionally not imported — see docs/database-schema.md's
+/// raw materials section). A row is expected to have at most one of the three price columns
+/// filled in — see `commands::import::resolve_unit_and_price` for what happens if more than one
+/// is.
 pub fn parse_products(range: &Range<Data>) -> Vec<ParsedProductRow> {
     let mut result = Vec::new();
     for row in range.rows().skip(1) {
@@ -55,11 +61,15 @@ pub fn parse_products(range: &Range<Data>) -> Vec<ParsedProductRow> {
         };
         let category_name = cell_string(row, 1);
         let price_per_kg = row.get(2).and_then(|c| c.as_f64());
-        let notes = cell_string(row, 4);
+        let price_per_piece = row.get(3).and_then(|c| c.as_f64());
+        let price_per_liter = row.get(4).and_then(|c| c.as_f64());
+        let notes = cell_string(row, 6);
         result.push(ParsedProductRow {
             name,
             category_name,
             price_per_kg,
+            price_per_piece,
+            price_per_liter,
             notes,
         });
     }
@@ -162,6 +172,8 @@ mod tests {
                 Data::String("Flour".into()),
                 Data::String("Dry Goods".into()),
                 Data::Float(0.43),
+                Data::Empty,
+                Data::Empty,
                 Data::Float(0.0),
                 Data::String("Base for pastries".into()),
             ],
@@ -172,7 +184,38 @@ mod tests {
         assert_eq!(row.name, "Flour");
         assert_eq!(row.category_name.as_deref(), Some("Dry Goods"));
         assert_eq!(row.price_per_kg, Some(0.43));
+        assert_eq!(row.price_per_piece, None);
+        assert_eq!(row.price_per_liter, None);
         assert_eq!(row.notes.as_deref(), Some("Base for pastries"));
+    }
+
+    #[test]
+    fn parse_products_reads_piece_and_liter_prices() {
+        let range = range_from_rows(&[
+            &[Data::String("Name".into())],
+            &[
+                Data::String("Eggs".into()),
+                Data::String("Dairy".into()),
+                Data::Empty,
+                Data::Float(0.25),
+                Data::Empty,
+            ],
+            &[
+                Data::String("Milk".into()),
+                Data::String("Dairy".into()),
+                Data::Empty,
+                Data::Empty,
+                Data::Float(1.1),
+            ],
+        ]);
+        let result = parse_products(&range);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].price_per_kg, None);
+        assert_eq!(result[0].price_per_piece, Some(0.25));
+        assert_eq!(result[0].price_per_liter, None);
+        assert_eq!(result[1].price_per_kg, None);
+        assert_eq!(result[1].price_per_piece, None);
+        assert_eq!(result[1].price_per_liter, Some(1.1));
     }
 
     #[test]
@@ -186,6 +229,8 @@ mod tests {
         let row = &result[0];
         assert_eq!(row.category_name, None);
         assert_eq!(row.price_per_kg, None);
+        assert_eq!(row.price_per_piece, None);
+        assert_eq!(row.price_per_liter, None);
         assert_eq!(row.notes, None);
     }
 

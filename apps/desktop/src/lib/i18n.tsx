@@ -322,7 +322,7 @@ const en = {
 
   "import.title": "Import from Excel",
   "import.dialogDescription":
-    "First sheet: products (name, category, price €/kg, comments). Second sheet: categories.",
+    "First sheet: products (name, category, price €/kg, price €/piece, price €/liter, comments — fill in at most one price column per row). Second sheet: categories.",
   "import.importing": "Importing…",
   "import.categoriesAdded": "Categories added",
   "import.categoriesAlreadyExisted": "Categories already existed",
@@ -712,7 +712,7 @@ const el: Record<keyof typeof en, string> = {
 
   "import.title": "Εισαγωγή από Excel",
   "import.dialogDescription":
-    "Πρώτο φύλλο: προϊόντα (όνομα, κατηγορία, τιμή €/kg, σχόλια). Δεύτερο φύλλο: κατηγορίες.",
+    "Πρώτο φύλλο: προϊόντα (όνομα, κατηγορία, τιμή €/kg, τιμή €/τεμάχιο, τιμή €/λίτρο, σχόλια — συμπληρώστε το πολύ μία στήλη τιμής ανά γραμμή). Δεύτερο φύλλο: κατηγορίες.",
   "import.importing": "Εισαγωγή…",
   "import.categoriesAdded": "Κατηγορίες που προστέθηκαν",
   "import.categoriesAlreadyExisted": "Κατηγορίες που υπήρχαν ήδη",
