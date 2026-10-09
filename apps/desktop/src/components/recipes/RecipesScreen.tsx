@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostingRawMaterial } from "@pastry-management/core";
 import { listMeasurementUnits } from "../../api/measurementUnits";
@@ -15,6 +15,7 @@ import type {
   RecipeSummary,
 } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
+import { compareNullable } from "../../lib/sorting";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeForm } from "./RecipeForm";
 import {
@@ -31,11 +32,13 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Checkbox } from "../ui/checkbox";
-import { Label } from "../ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { ListToolbar } from "../shared/ListToolbar";
+import type { ListToolbarFilter } from "../shared/ListToolbar";
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; recipe: RecipeDetailData };
+type SortField = "name" | "category" | "price" | "status";
+type StatusFilter = "" | "active" | "archived";
 
 function formatMoney(micros: number): string {
   return (micros / 1_000_000).toFixed(2);
@@ -71,7 +74,6 @@ export function RecipesScreen({
   const [rawMaterialCosting, setRawMaterialCosting] = useState<CostingRawMaterial[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<MeasurementUnit[]>([]);
-  const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ mode: "closed" });
@@ -82,11 +84,19 @@ export function RecipesScreen({
   // not "zero cost" — rendered as "—" rather than a misleading €0.00.
   const [costByRecipeId, setCostByRecipeId] = useState<Map<number, number | null>>(new Map());
 
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
   const refresh = useCallback(() => {
     setLoading(true);
     setLoadError(null);
     Promise.all([
-      recipesApi.listRecipes(includeArchived),
+      // Always fetch both active and archived — the status filter below is applied client-side,
+      // so switching it doesn't need a round trip.
+      recipesApi.listRecipes(true),
       recipesApi.listRecipes(false),
       listRawMaterials(false),
       listMeasurementUnits(),
@@ -113,7 +123,7 @@ export function RecipesScreen({
       )
       .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
-  }, [includeArchived, te]);
+  }, [te]);
 
   useEffect(() => {
     refresh();
@@ -215,6 +225,32 @@ export function RecipesScreen({
     }
   }
 
+  const visibleRecipes = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const filtered = recipes.filter((recipe) => {
+      if (query !== "" && !recipe.name.toLowerCase().includes(query)) return false;
+      if (categoryFilter !== "" && recipe.category !== categoryFilter) return false;
+      if (statusFilter === "active" && recipe.status !== "active") return false;
+      if (statusFilter === "archived" && recipe.status !== "archived") return false;
+      return true;
+    });
+
+    const sortKey = (recipe: RecipeSummary): string | number | null => {
+      switch (sortField) {
+        case "name":
+          return recipe.name;
+        case "category":
+          return recipe.category;
+        case "price":
+          return costByRecipeId.get(recipe.id) ?? null;
+        case "status":
+          return recipe.status === "active" ? 0 : 1;
+      }
+    };
+
+    return [...filtered].sort((a, b) => compareNullable(sortKey(a), sortKey(b), sortDirection));
+  }, [recipes, search, categoryFilter, statusFilter, sortField, sortDirection, costByRecipeId]);
+
   if (selectedRecipe) {
     return (
       <RecipeDetail
@@ -227,23 +263,62 @@ export function RecipesScreen({
     );
   }
 
+  const sortOptions = [
+    { value: "name", label: t("common.name") },
+    { value: "category", label: t("common.category") },
+    { value: "price", label: t("common.price") },
+    { value: "status", label: t("common.status") },
+  ];
+
+  const recipeFilters: ListToolbarFilter[] = [
+    {
+      key: "category",
+      label: t("common.category"),
+      value: categoryFilter,
+      onChange: setCategoryFilter,
+      options: [
+        { value: "", label: t("common.allCategories") },
+        ...[...categories]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((c) => ({ value: c.name, label: c.name })),
+      ],
+    },
+    {
+      key: "status",
+      label: t("common.status"),
+      value: statusFilter,
+      onChange: (v) => setStatusFilter(v as StatusFilter),
+      options: [
+        { value: "", label: t("common.allStatuses") },
+        { value: "active", label: t("common.active") },
+        { value: "archived", label: t("common.archived") },
+      ],
+    },
+  ];
+
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="font-heading text-xl font-semibold">{t("recipes.title")}</h2>
         <div className="flex items-center gap-4">
-          <Label className="flex items-center gap-2 font-normal">
-            <Checkbox
-              checked={includeArchived}
-              onCheckedChange={(checked) => setIncludeArchived(checked === true)}
-            />
-            {t("common.showArchived")}
-          </Label>
           <Button type="button" onClick={() => setPanel({ mode: "create" })}>
             {t("recipes.addRecipe")}
           </Button>
         </div>
       </div>
+
+      <ListToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("recipes.searchPlaceholder")}
+        filters={recipeFilters}
+        sortOptions={sortOptions}
+        sortValue={sortField}
+        onSortChange={(v) => setSortField(v as SortField)}
+        sortDirection={sortDirection}
+        onToggleSortDirection={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+        sortLabel={t("common.sortBy")}
+      />
 
       {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
@@ -291,6 +366,8 @@ export function RecipesScreen({
         <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : recipes.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("recipes.empty")}</p>
+      ) : visibleRecipes.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("common.noMatches")}</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
@@ -305,7 +382,7 @@ export function RecipesScreen({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recipes.map((recipe) => {
+              {visibleRecipes.map((recipe) => {
                 const cost = costByRecipeId.get(recipe.id);
                 return (
                   <TableRow key={recipe.id}>
