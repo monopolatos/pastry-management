@@ -1,6 +1,10 @@
 pub mod backup_settings;
 pub mod categories;
 pub mod dropbox_settings;
+pub mod expense_categories;
+pub mod expenses;
+pub mod income_categories;
+pub mod income_entries;
 pub mod measurement_units;
 pub mod purchase_records;
 pub mod raw_materials;

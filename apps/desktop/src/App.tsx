@@ -7,6 +7,7 @@ import {
   DatabaseBackup,
   LayoutDashboard,
   LogOut,
+  PiggyBank,
   Settings as SettingsIcon,
   Tags,
   Truck,
@@ -20,6 +21,7 @@ import { BackupScreen } from "./components/backup/BackupScreen";
 import { CategoriesScreen } from "./components/categories/CategoriesScreen";
 import { CostCalculatorScreen } from "./components/costCalculator/CostCalculatorScreen";
 import { DashboardScreen } from "./components/dashboard/DashboardScreen";
+import { FinanceScreen } from "./components/finance/FinanceScreen";
 import { ProfileScreen } from "./components/profile/ProfileScreen";
 import { RawMaterialsScreen } from "./components/rawMaterials/RawMaterialsScreen";
 import { RecipesScreen } from "./components/recipes/RecipesScreen";
@@ -57,6 +59,7 @@ type Tab =
   | "categories"
   | "cost-calculator"
   | "analytics"
+  | "finance"
   | "backup"
   | "settings"
   | "profile"
@@ -76,6 +79,7 @@ const NAV_ITEMS: NavItem[] = [
   { tab: "categories", labelKey: "nav.categories", icon: Tags },
   { tab: "cost-calculator", labelKey: "nav.costCalculator", icon: Calculator },
   { tab: "analytics", labelKey: "nav.analytics", icon: BarChart3 },
+  { tab: "finance", labelKey: "nav.finance", icon: PiggyBank },
   { tab: "backup", labelKey: "nav.backup", icon: DatabaseBackup },
   { tab: "settings", labelKey: "nav.settings", icon: SettingsIcon },
   { tab: "profile", labelKey: "nav.profile", icon: CircleUser },
@@ -248,6 +252,7 @@ function App() {
           {activeTab === "categories" && <CategoriesScreen />}
           {activeTab === "cost-calculator" && <CostCalculatorScreen />}
           {activeTab === "analytics" && <AnalyticsScreen />}
+          {activeTab === "finance" && <FinanceScreen />}
           {activeTab === "backup" && <BackupScreen />}
           {activeTab === "settings" && <SettingsScreen />}
           {activeTab === "profile" && <ProfileScreen session={session} />}

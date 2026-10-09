@@ -411,3 +411,46 @@ export interface ImportSummary {
   /** `"<row name>: <reason>"` for a row that couldn't be created at all. */
   products_skipped_invalid: string[];
 }
+
+/**
+ * `commands::expenses` (see src-tauri/src/db/repositories/expenses.rs). A plain, editable ledger
+ * row — not append-only like `PurchaseRecord` — for shop expenses unrelated to ingredient
+ * purchases (rent, wages, utilities, ...), independent from the costing side of the app.
+ */
+export interface Expense {
+  id: number;
+  expense_date: string;
+  category_id: number | null;
+  /** Denormalized for display convenience — the category's current name. */
+  category_name: string | null;
+  amount_micros: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpenseInput {
+  expense_date: string;
+  category_id: number | null;
+  amount_micros: number;
+  description: string | null;
+}
+
+/** `commands::income_entries` — mirrors `Expense`/`ExpenseInput` exactly for shop income/sales. */
+export interface IncomeEntry {
+  id: number;
+  income_date: string;
+  category_id: number | null;
+  category_name: string | null;
+  amount_micros: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IncomeEntryInput {
+  income_date: string;
+  category_id: number | null;
+  amount_micros: number;
+  description: string | null;
+}
