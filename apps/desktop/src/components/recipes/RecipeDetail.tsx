@@ -7,6 +7,7 @@ import type { CostSnapshotSummary, RecipeDetail as RecipeDetailData } from "../.
 import { describeCostingError } from "../../lib/costingErrors";
 import { translateErrorMessage } from "../../lib/errorTranslations";
 import { useI18n } from "../../lib/i18n";
+import { parseInstructionSteps } from "../../lib/recipeSteps";
 import { RecipeCostBreakdown } from "./RecipeCostBreakdown";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -191,14 +192,25 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
             </div>
           )}
 
-          {recipe.instructions && (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold">{t("recipes.instructions")}</h3>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                {recipe.instructions}
-              </p>
-            </div>
-          )}
+          {recipe.instructions &&
+            (() => {
+              const steps = parseInstructionSteps(recipe.instructions);
+              return steps.length === 0 ? null : (
+                <div className="mt-4">
+                  <h3 className="text-sm font-semibold">{t("recipes.instructions")}</h3>
+                  <ol className="mt-1.5 flex flex-col gap-2">
+                    {steps.map((step, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm">
+                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                          {index + 1}
+                        </span>
+                        <span className="whitespace-pre-wrap text-muted-foreground">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              );
+            })()}
 
           {recipe.notes && (
             <div className="mt-4">

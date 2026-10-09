@@ -7,6 +7,7 @@ import {
   resolveRawMaterialPrice,
 } from "@pastry-management/core";
 import type { CostBreakdown, CostingRawMaterial, CostingUnit } from "@pastry-management/core";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import * as recipesApi from "../../api/recipes";
 import { UNIT_KIND_LABEL_KEYS } from "../../api/types";
 import type {
@@ -21,6 +22,7 @@ import type {
 } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
+import { parseInstructionSteps, serializeInstructionSteps } from "../../lib/recipeSteps";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -56,6 +58,11 @@ interface IngredientRow {
   /** Denormalized at the moment the row was added/loaded — avoids re-deriving a display name for
    * rows that reference an archived material/recipe no longer present in the active-only props. */
   display_name: string;
+}
+
+interface StepRow {
+  key: number;
+  text: string;
 }
 
 const KNOWN_FIELDS = [
@@ -107,7 +114,6 @@ export function RecipeForm({
   const [categoryId, setCategoryId] = useState(
     initial?.category_id != null ? String(initial.category_id) : "",
   );
-  const [instructions, setInstructions] = useState(initial?.instructions ?? "");
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(
     initial?.prep_time_minutes != null ? String(initial.prep_time_minutes) : "",
   );
@@ -143,6 +149,13 @@ export function RecipeForm({
           display_name: ing.ingredient_name,
         }))
       : [],
+  );
+
+  const [steps, setSteps] = useState<StepRow[]>(() =>
+    parseInstructionSteps(initial?.instructions ?? null).map((text) => ({
+      key: newRowKey(),
+      text,
+    })),
   );
 
   const [pickerSearch, setPickerSearch] = useState("");
@@ -221,6 +234,30 @@ export function RecipeForm({
 
   function removeRow(key: number) {
     setRows((current) => current.filter((row) => row.key !== key));
+  }
+
+  function addStep() {
+    setSteps((current) => [...current, { key: newRowKey(), text: "" }]);
+  }
+
+  function updateStep(key: number, value: string) {
+    setSteps((current) =>
+      current.map((step) => (step.key === key ? { ...step, text: value } : step)),
+    );
+  }
+
+  function removeStep(key: number) {
+    setSteps((current) => current.filter((step) => step.key !== key));
+  }
+
+  function moveStep(index: number, direction: -1 | 1) {
+    setSteps((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   }
 
   function handlePickMaterial(material: RawMaterial) {
@@ -455,7 +492,7 @@ export function RecipeForm({
         name: name.trim(),
         description: emptyToNull(description),
         category_id: categoryId === "" ? null : Number(categoryId),
-        instructions: emptyToNull(instructions),
+        instructions: serializeInstructionSteps(steps.map((step) => step.text)),
         prep_time_minutes: emptyToNullMinutes(prepTimeMinutes),
         cook_time_minutes: emptyToNullMinutes(cookTimeMinutes),
         notes: emptyToNull(notes),
@@ -636,12 +673,73 @@ export function RecipeForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="recipe-instructions">{t("recipes.instructions")}</Label>
-            <Textarea
-              id="recipe-instructions"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-            />
+            <Label>{t("recipes.instructions")}</Label>
+            {steps.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("recipes.noStepsYet")}</p>
+            ) : (
+              <ol className="flex flex-col gap-2">
+                {steps.map((step, index) => (
+                  <li key={step.key} className="flex items-start gap-2">
+                    <span className="mt-1.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <Textarea
+                      value={step.text}
+                      onChange={(e) => updateStep(step.key, e.target.value)}
+                      placeholder={t("recipes.stepPlaceholder")}
+                      rows={2}
+                      className="flex-1"
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-6"
+                        title={t("recipes.moveStepUp")}
+                        disabled={index === 0}
+                        onClick={() => moveStep(index, -1)}
+                      >
+                        <ChevronUp className="size-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-6"
+                        title={t("recipes.moveStepDown")}
+                        disabled={index === steps.length - 1}
+                        onClick={() => moveStep(index, 1)}
+                      >
+                        <ChevronDown className="size-3.5" />
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 text-destructive hover:text-destructive"
+                      title={t("recipes.removeStep")}
+                      onClick={() => removeStep(step.key)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={addStep}
+              >
+                <Plus className="size-4" />
+                {t("recipes.addStep")}
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
