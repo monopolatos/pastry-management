@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostingRawMaterial } from "@pastry-management/core";
 import { listMeasurementUnits } from "../../api/measurementUnits";
 import { listRawMaterials } from "../../api/rawMaterials";
@@ -36,6 +37,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; recipe: RecipeDetailData };
 
+function formatMoney(micros: number): string {
+  return (micros / 1_000_000).toFixed(2);
+}
+
 interface RecipesScreenProps {
   /** Set (once) to jump straight into the create form on mount — e.g. a "Add recipe" shortcut
    * elsewhere in the app navigating here. Consumed via `onAutoOpenCreateHandled` so navigating
@@ -72,6 +77,10 @@ export function RecipesScreen({
   const [panel, setPanel] = useState<Panel>({ mode: "closed" });
   const [rowError, setRowError] = useState<string | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetailData | null>(null);
+  // Total cost per recipe, computed client-side the same way the detail/cost-calculator screens
+  // do. `null` means it couldn't be calculated (e.g. an ingredient has no purchase history yet),
+  // not "zero cost" — rendered as "—" rather than a misleading €0.00.
+  const [costByRecipeId, setCostByRecipeId] = useState<Map<number, number | null>>(new Map());
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -109,6 +118,29 @@ export function RecipesScreen({
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (recipes.length === 0) {
+      setCostByRecipeId(new Map());
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      recipes.map(async (recipe) => {
+        try {
+          const graph = await recipesApi.getRecipeCostingGraph(recipe.id);
+          return [recipe.id, calculateRecipeCost(graph).totalCostMicros] as const;
+        } catch {
+          return [recipe.id, null] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) setCostByRecipeId(new Map(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [recipes]);
 
   useEffect(() => {
     if (!autoOpenCreate) return;
@@ -267,88 +299,101 @@ export function RecipesScreen({
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.category")}</TableHead>
                 <TableHead>{t("recipes.yield")}</TableHead>
+                <TableHead>{t("recipes.calculatedPrice")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
                 <TableHead>{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recipes.map((recipe) => (
-                <TableRow key={recipe.id}>
-                  <TableCell>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0"
-                      onClick={() => openDetail(recipe.id)}
-                    >
-                      {recipe.name}
-                    </Button>
-                  </TableCell>
-                  <TableCell>{recipe.category ?? "—"}</TableCell>
-                  <TableCell>
-                    {recipe.yield_quantity} {unitLabel(units, recipe.yield_unit_code)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={recipe.status === "active" ? "success" : "destructive"}>
-                      {recipe.status === "active" ? t("common.active") : t("common.archived")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-2">
+              {recipes.map((recipe) => {
+                const cost = costByRecipeId.get(recipe.id);
+                return (
+                  <TableRow key={recipe.id}>
+                    <TableCell>
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(recipe.id)}
+                        variant="link"
+                        className="h-auto p-0"
+                        onClick={() => openDetail(recipe.id)}
                       >
-                        {t("common.edit")}
+                        {recipe.name}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleArchiveToggle(recipe)}
-                      >
-                        {recipe.status === "active" ? t("common.archive") : t("common.reactivate")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDuplicate(recipe.id)}
-                      >
-                        {t("recipes.duplicate")}
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button type="button" variant="destructive" size="sm">
-                            {t("common.delete")}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {t("common.deleteConfirmTitle").replace("{name}", recipe.name)}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t("recipes.deleteConfirmBody")} {t("common.deleteCannotBeUndone")}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => handleDelete(recipe.id)}
-                            >
+                    </TableCell>
+                    <TableCell>{recipe.category ?? "—"}</TableCell>
+                    <TableCell>
+                      {recipe.yield_quantity} {unitLabel(units, recipe.yield_unit_code)}
+                    </TableCell>
+                    <TableCell>
+                      {cost === undefined
+                        ? t("common.loading")
+                        : cost === null
+                          ? "—"
+                          : `€${formatMoney(cost)}`}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={recipe.status === "active" ? "success" : "destructive"}>
+                        {recipe.status === "active" ? t("common.active") : t("common.archived")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEdit(recipe.id)}
+                        >
+                          {t("common.edit")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleArchiveToggle(recipe)}
+                        >
+                          {recipe.status === "active"
+                            ? t("common.archive")
+                            : t("common.reactivate")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicate(recipe.id)}
+                        >
+                          {t("recipes.duplicate")}
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="destructive" size="sm">
                               {t("common.delete")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t("common.deleteConfirmTitle").replace("{name}", recipe.name)}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t("recipes.deleteConfirmBody")} {t("common.deleteCannotBeUndone")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => handleDelete(recipe.id)}
+                              >
+                                {t("common.delete")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
