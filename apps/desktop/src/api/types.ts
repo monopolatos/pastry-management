@@ -371,6 +371,20 @@ export interface UpdateCheckResult {
   notes: string | null;
 }
 
+export type UpdateProgressStage = "none" | "available" | "downloaded" | "ready";
+
+/**
+ * `commands::updates::get_update_progress` / the `"update-progress"` event. Tracks how far the
+ * most recently found update has progressed, so a window that wasn't open yet when e.g. the
+ * silent launch-time check found (or even auto-downloaded/installed) an update can still catch up
+ * on that — see UpdateBanner.tsx.
+ */
+export interface UpdateProgress {
+  stage: UpdateProgressStage;
+  version: string | null;
+  notes: string | null;
+}
+
 /**
  * `commands::categories` (see src-tauri/src/db/repositories/categories.rs's `Category` struct).
  * Raw material categories are a managed entity (archive-over-delete, like suppliers), not free

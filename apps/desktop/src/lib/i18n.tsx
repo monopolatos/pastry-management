@@ -227,6 +227,10 @@ const en = {
   "settings.updatesRestart": "Restart now",
   "settings.updatesError": "Something went wrong checking for updates.",
 
+  "updateBanner.available": "A new version (v{version}) is available.",
+  "updateBanner.downloaded": "Update v{version} downloaded — ready to install.",
+  "updateBanner.ready": "Update v{version} installed — restart to finish updating.",
+
   "profile.title": "User Profile",
   "profile.username": "Username",
   "profile.role": "Role",
@@ -610,6 +614,11 @@ const el: Record<keyof typeof en, string> = {
   "settings.updatesReadyToRestart": "Εγκαταστάθηκε — επανεκκινήστε για να ολοκληρωθεί η ενημέρωση.",
   "settings.updatesRestart": "Επανεκκίνηση τώρα",
   "settings.updatesError": "Κάτι πήγε στραβά κατά τον έλεγχο για ενημερώσεις.",
+
+  "updateBanner.available": "Μια νέα έκδοση (v{version}) είναι διαθέσιμη.",
+  "updateBanner.downloaded": "Η ενημέρωση v{version} λήφθηκε — έτοιμη για εγκατάσταση.",
+  "updateBanner.ready":
+    "Η ενημέρωση v{version} εγκαταστάθηκε — κάντε επανεκκίνηση για να ολοκληρωθεί.",
 
   "profile.title": "Προφίλ Χρήστη",
   "profile.username": "Όνομα χρήστη",

@@ -13,7 +13,7 @@ use rusqlite::Connection;
 use tauri::Manager;
 
 use auth::SessionState;
-use commands::updates::{DownloadedUpdateState, PendingUpdateState};
+use commands::updates::{DownloadedUpdateState, PendingUpdateState, UpdateProgressState};
 
 /// Shared, mutex-guarded connection handle. rusqlite::Connection is not Sync, and a single-user
 /// desktop app has no need for a connection pool, so one guarded connection is the simplest
@@ -103,7 +103,8 @@ fn run_startup_update_check(app: &tauri::AppHandle) {
         let check_result = {
             let pending = app.state::<PendingUpdateState>();
             let downloaded = app.state::<DownloadedUpdateState>();
-            commands::updates::check_now(&app, &pending, &downloaded).await
+            let progress = app.state::<UpdateProgressState>();
+            commands::updates::check_now(&app, &pending, &downloaded, &progress).await
         };
 
         {
@@ -120,8 +121,10 @@ fn run_startup_update_check(app: &tauri::AppHandle) {
         }
 
         let download_result = commands::updates::download_update(
+            app.clone(),
             app.state::<PendingUpdateState>(),
             app.state::<DownloadedUpdateState>(),
+            app.state::<UpdateProgressState>(),
         )
         .await;
         if download_result.is_err() {
@@ -130,8 +133,10 @@ fn run_startup_update_check(app: &tauri::AppHandle) {
 
         if settings.auto_install_enabled {
             let _ = commands::updates::install_update(
+                app.clone(),
                 app.state::<PendingUpdateState>(),
                 app.state::<DownloadedUpdateState>(),
+                app.state::<UpdateProgressState>(),
             );
         }
     });
@@ -159,6 +164,7 @@ pub fn run() {
             app.manage(SessionState::default());
             app.manage(PendingUpdateState::default());
             app.manage(DownloadedUpdateState::default());
+            app.manage(UpdateProgressState::default());
 
             run_startup_auto_backup_check(app.handle());
             run_startup_update_check(app.handle());
@@ -228,6 +234,7 @@ pub fn run() {
             commands::updates::download_update,
             commands::updates::install_update,
             commands::updates::restart_app,
+            commands::updates::get_update_progress,
             commands::categories::list_categories,
             commands::categories::create_category,
             commands::categories::update_category,

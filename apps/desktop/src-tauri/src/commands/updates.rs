@@ -14,7 +14,7 @@
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 use crate::db::repositories::update_settings::{self, UpdateSettings, UpdateSettingsInput};
@@ -31,6 +31,34 @@ pub struct PendingUpdateState(pub Mutex<Option<Update>>);
 #[derive(Default)]
 pub struct DownloadedUpdateState(pub Mutex<Option<Vec<u8>>>);
 
+/// How far the most recently found update has progressed — kept in memory and mirrored to the
+/// frontend both on demand (`get_update_progress`, for a window that mounts after the progress
+/// already changed) and live (the `"update-progress"` event, for a window already open when it
+/// changes). This is what lets an update found by the *silent, backend-only* launch-time check
+/// (see `run_startup_update_check` in lib.rs) still surface to the user wherever they are in the
+/// app, not just on the Settings screen where a manual check's result already shows inline.
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct UpdateProgress {
+    /// "none" | "available" | "downloaded" | "ready"
+    pub stage: String,
+    pub version: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Default)]
+pub struct UpdateProgressState(pub Mutex<UpdateProgress>);
+
+const UPDATE_PROGRESS_EVENT: &str = "update-progress";
+
+fn set_progress(app: &AppHandle, progress: &UpdateProgressState, next: UpdateProgress) {
+    if let Ok(mut guard) = progress.0.lock() {
+        *guard = next.clone();
+    }
+    // Best-effort: a window not yet ready to receive it just relies on get_update_progress
+    // instead, so a failed emit here isn't an error worth surfacing to the caller.
+    let _ = app.emit(UPDATE_PROGRESS_EVENT, next);
+}
+
 #[derive(Debug, Serialize)]
 pub struct UpdateCheckResult {
     pub available: bool,
@@ -41,11 +69,14 @@ pub struct UpdateCheckResult {
 
 /// Runs an actual check against the configured updater endpoint and stashes the result (if any)
 /// in `pending` for a later `download_update` call. Shared by the manual `check_for_update`
-/// command and the launch-time auto-check in lib.rs, so both go through the exact same logic.
+/// command and the launch-time auto-check in lib.rs, so both go through the exact same logic —
+/// including updating `progress` and emitting it, so an update found by either path surfaces the
+/// same way to the frontend.
 pub async fn check_now(
     app: &AppHandle,
     pending: &PendingUpdateState,
     downloaded: &DownloadedUpdateState,
+    progress: &UpdateProgressState,
 ) -> AppResult<UpdateCheckResult> {
     let updater = app
         .updater()
@@ -84,7 +115,28 @@ pub async fn check_now(
         .map_err(|e| AppError::new(e.to_string()))? = None;
     *pending.0.lock().map_err(|e| AppError::new(e.to_string()))? = update;
 
+    if result.available {
+        set_progress(
+            app,
+            progress,
+            UpdateProgress {
+                stage: "available".into(),
+                version: result.version.clone(),
+                notes: result.notes.clone(),
+            },
+        );
+    }
+
     Ok(result)
+}
+
+/// Current update progress, for a window that mounted after the relevant stage change already
+/// happened (e.g. the silent launch-time check finished before the frontend's listener was ready)
+/// — cheap, synchronous, no network request. Live changes after that are delivered via the
+/// `"update-progress"` event instead.
+#[tauri::command]
+pub fn get_update_progress(progress: State<UpdateProgressState>) -> UpdateProgress {
+    progress.0.lock().map(|g| g.clone()).unwrap_or_default()
 }
 
 /// Cheap, network-free way to display "you're on vX.Y.Z" without triggering an actual update
@@ -115,8 +167,9 @@ pub async fn check_for_update(
     db: State<'_, DbState>,
     pending: State<'_, PendingUpdateState>,
     downloaded: State<'_, DownloadedUpdateState>,
+    progress: State<'_, UpdateProgressState>,
 ) -> AppResult<UpdateCheckResult> {
-    let result = check_now(&app, &pending, &downloaded).await?;
+    let result = check_now(&app, &pending, &downloaded, &progress).await?;
 
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     let settings = update_settings::get_or_create_default(&conn)?;
@@ -127,8 +180,10 @@ pub async fn check_for_update(
 
 #[tauri::command]
 pub async fn download_update(
+    app: AppHandle,
     pending: State<'_, PendingUpdateState>,
     downloaded: State<'_, DownloadedUpdateState>,
+    progress: State<'_, UpdateProgressState>,
 ) -> AppResult<()> {
     let update = {
         let guard = pending.0.lock().map_err(|e| AppError::new(e.to_string()))?;
@@ -147,13 +202,25 @@ pub async fn download_update(
         .lock()
         .map_err(|e| AppError::new(e.to_string()))? = Some(bytes);
 
+    set_progress(
+        &app,
+        &progress,
+        UpdateProgress {
+            stage: "downloaded".into(),
+            version: Some(update.version.clone()),
+            notes: update.body.clone(),
+        },
+    );
+
     Ok(())
 }
 
 #[tauri::command]
 pub fn install_update(
+    app: AppHandle,
     pending: State<'_, PendingUpdateState>,
     downloaded: State<'_, DownloadedUpdateState>,
+    progress: State<'_, UpdateProgressState>,
 ) -> AppResult<()> {
     let update = {
         let guard = pending.0.lock().map_err(|e| AppError::new(e.to_string()))?;
@@ -174,7 +241,22 @@ pub fn install_update(
 
     update
         .install(bytes)
-        .map_err(|e| AppError::new(format!("Install failed: {e}")))
+        .map_err(|e| AppError::new(format!("Install failed: {e}")))?;
+
+    // On Windows, `install` already exits the app to hand off to the platform installer, so this
+    // may never actually be observed there — harmless; macOS/Linux stay running until the user
+    // explicitly restarts (see restart_app below), where it does matter.
+    set_progress(
+        &app,
+        &progress,
+        UpdateProgress {
+            stage: "ready".into(),
+            version: Some(update.version.clone()),
+            notes: update.body.clone(),
+        },
+    );
+
+    Ok(())
 }
 
 /// Relaunches the app into the newly installed version. Always an explicit user action (the

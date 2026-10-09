@@ -1,5 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { UpdateCheckResult, UpdateSettings, UpdateSettingsInput } from "./types";
+import { listen } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import type {
+  UpdateCheckResult,
+  UpdateProgress,
+  UpdateSettings,
+  UpdateSettingsInput,
+} from "./types";
 
 /**
  * Typed wrappers around the `commands::updates` Tauri commands. This is the only module that
@@ -43,4 +50,18 @@ export function installUpdate(): Promise<void> {
 
 export function restartApp(): Promise<void> {
   return invoke("restart_app");
+}
+
+/** Current update progress — cheap, synchronous on the Rust side, no network request. Call once
+ * on mount to catch up on a stage change that may have already happened (e.g. the silent
+ * launch-time check), then use `onUpdateProgress` for anything that changes afterward. */
+export function getUpdateProgress(): Promise<UpdateProgress> {
+  return invoke("get_update_progress");
+}
+
+/** Subscribes to live update-progress changes (the silent launch-time check finding/downloading/
+ * installing an update while this window is already open). Returns the unlisten function — call
+ * it on unmount. */
+export function onUpdateProgress(handler: (progress: UpdateProgress) => void): Promise<UnlistenFn> {
+  return listen<UpdateProgress>("update-progress", (event) => handler(event.payload));
 }

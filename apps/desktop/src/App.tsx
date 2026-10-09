@@ -25,6 +25,7 @@ import { RawMaterialsScreen } from "./components/rawMaterials/RawMaterialsScreen
 import { RecipesScreen } from "./components/recipes/RecipesScreen";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { SuppliersScreen } from "./components/suppliers/SuppliersScreen";
+import { UpdateBanner } from "./components/updates/UpdateBanner";
 import { UsersSection } from "./components/users/UsersSection";
 import { Avatar, AvatarFallback } from "./components/ui/avatar";
 import { Button } from "./components/ui/button";
@@ -224,6 +225,8 @@ function App() {
             {activeItem ? t(activeItem.labelKey) : ""}
           </h1>
         </header>
+
+        <UpdateBanner />
 
         <main className="flex-1 overflow-y-auto p-6">
           {activeTab === "dashboard" && (
