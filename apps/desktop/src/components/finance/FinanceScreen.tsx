@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import {
   Bar,
   CartesianGrid,
@@ -364,20 +365,24 @@ export function FinanceScreen() {
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">{t("finance.title")}</h2>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setPanel({ mode: "create-expense" })}
-          >
-            {t("finance.addExpense")}
-          </Button>
-          <Button type="button" onClick={() => setPanel({ mode: "create-income" })}>
-            {t("finance.addIncome")}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => setPanel({ mode: "create-expense" })}
+        >
+          <Plus className="size-4" />
+          {t("finance.addExpense")}
+        </Button>
+        <Button
+          type="button"
+          className="gap-1.5"
+          onClick={() => setPanel({ mode: "create-income" })}
+        >
+          <Plus className="size-4" />
+          {t("finance.addIncome")}
+        </Button>
       </div>
 
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}

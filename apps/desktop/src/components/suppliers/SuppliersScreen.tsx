@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import * as suppliersApi from "../../api/suppliers";
 import type { Supplier, SupplierInput } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
@@ -84,20 +85,18 @@ export function SuppliersScreen() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">{t("suppliers.title")}</h2>
-        <div className="flex items-center gap-4">
-          <Label className="flex items-center gap-2 font-normal">
-            <Checkbox
-              checked={includeInactive}
-              onCheckedChange={(checked) => setIncludeInactive(checked === true)}
-            />
-            {t("common.showInactive")}
-          </Label>
-          <Button type="button" onClick={() => setPanel({ mode: "create" })}>
-            {t("suppliers.addSupplier")}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-4">
+        <Label className="flex items-center gap-2 font-normal">
+          <Checkbox
+            checked={includeInactive}
+            onCheckedChange={(checked) => setIncludeInactive(checked === true)}
+          />
+          {t("common.showInactive")}
+        </Label>
+        <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
+          <Plus className="size-4" />
+          {t("suppliers.addSupplier")}
+        </Button>
       </div>
 
       {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}

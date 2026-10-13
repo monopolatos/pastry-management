@@ -260,7 +260,6 @@ const en = {
   "auth.createOwnerAccount": "Create owner account",
   "auth.creatingAccount": "Creating…",
 
-  "suppliers.title": "Suppliers",
   "suppliers.addSupplier": "Add supplier",
   "suppliers.editSupplier": "Edit supplier",
   "suppliers.contactPerson": "Contact person",
@@ -285,7 +284,6 @@ const en = {
   "units.l": "Liters (l)",
   "units.piece": "Piece",
 
-  "rawMaterials.title": "Raw Materials",
   "rawMaterials.addRawMaterial": "Add raw material",
   "rawMaterials.editRawMaterial": "Edit raw material",
   "rawMaterials.empty": "No raw materials yet.",
@@ -325,7 +323,6 @@ const en = {
   "categories.expenseDeleteConfirmBody": "This permanently deletes the category.",
   "categories.incomeDeleteConfirmBody": "This permanently deletes the category.",
   "categories.nameRequired": "Category name is required.",
-  "categories.title": "Categories",
   "categories.materialCategories": "Raw Material Categories",
   "categories.recipeCategories": "Recipe Categories",
 
@@ -342,7 +339,6 @@ const en = {
   "import.skippedInvalid": "Skipped — could not be imported",
   "import.nothingFound": "Nothing found to import in this file.",
 
-  "recipes.title": "Recipes",
   "recipes.addRecipe": "Add recipe",
   "recipes.editRecipe": "Edit recipe",
   "recipes.empty": "No recipes yet.",
@@ -424,7 +420,6 @@ const en = {
   "analytics.noCostSnapshots":
     "No cost snapshots saved yet for this recipe — save one from the recipe's cost breakdown to start tracking its price history.",
 
-  "finance.title": "Finance",
   "finance.amount": "Amount",
   "finance.addExpense": "Add expense",
   "finance.addIncome": "Add income",
@@ -693,7 +688,6 @@ const el: Record<keyof typeof en, string> = {
   "auth.createOwnerAccount": "Δημιουργία λογαριασμού ιδιοκτήτη",
   "auth.creatingAccount": "Δημιουργία…",
 
-  "suppliers.title": "Προμηθευτές",
   "suppliers.addSupplier": "Προσθήκη προμηθευτή",
   "suppliers.editSupplier": "Επεξεργασία προμηθευτή",
   "suppliers.contactPerson": "Υπεύθυνος επικοινωνίας",
@@ -718,7 +712,6 @@ const el: Record<keyof typeof en, string> = {
   "units.l": "Λίτρα (l)",
   "units.piece": "Τεμάχιο",
 
-  "rawMaterials.title": "Πρώτες Ύλες",
   "rawMaterials.addRawMaterial": "Προσθήκη πρώτης ύλης",
   "rawMaterials.editRawMaterial": "Επεξεργασία πρώτης ύλης",
   "rawMaterials.empty": "Δεν υπάρχουν ακόμη πρώτες ύλες.",
@@ -758,7 +751,6 @@ const el: Record<keyof typeof en, string> = {
   "categories.expenseDeleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
   "categories.incomeDeleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
   "categories.nameRequired": "Το όνομα κατηγορίας είναι υποχρεωτικό.",
-  "categories.title": "Κατηγορίες",
   "categories.materialCategories": "Κατηγορίες Υλικών",
   "categories.recipeCategories": "Κατηγορίες Συνταγών",
 
@@ -775,7 +767,6 @@ const el: Record<keyof typeof en, string> = {
   "import.skippedInvalid": "Παραλείφθηκαν — δεν ήταν δυνατή η εισαγωγή",
   "import.nothingFound": "Δεν βρέθηκε τίποτα για εισαγωγή σε αυτό το αρχείο.",
 
-  "recipes.title": "Συνταγές",
   "recipes.addRecipe": "Προσθήκη συνταγής",
   "recipes.editRecipe": "Επεξεργασία συνταγής",
   "recipes.empty": "Δεν υπάρχουν ακόμη συνταγές.",
@@ -859,7 +850,6 @@ const el: Record<keyof typeof en, string> = {
   "analytics.noCostSnapshots":
     "Δεν έχουν αποθηκευτεί στιγμιότυπα κόστους για αυτή τη συνταγή ακόμη — αποθηκεύστε ένα από την ανάλυση κόστους της συνταγής για να ξεκινήσει η παρακολούθηση του ιστορικού τιμών.",
 
-  "finance.title": "Οικονομικά",
   "finance.amount": "Ποσό",
   "finance.addExpense": "Προσθήκη εξόδου",
   "finance.addIncome": "Προσθήκη εσόδου",

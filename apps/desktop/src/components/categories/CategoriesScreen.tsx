@@ -49,8 +49,6 @@ export function CategoriesScreen() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-heading text-xl font-semibold">{t("categories.title")}</h2>
-
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
 
       {loading ? (

@@ -98,7 +98,7 @@ export function RawMaterialDetail({
       </div>
 
       {justCreated && (
-        <div className="rounded-lg border-l-4 border-l-primary bg-muted/50 px-4 py-3 text-sm">
+        <div className="rounded-lg bg-primary/10 px-4 py-3 text-sm text-primary">
           {t("rawMaterials.justCreatedNotice").replace("{name}", material.name)}
         </div>
       )}

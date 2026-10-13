@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostingRawMaterial } from "@pastry-management/core";
 import { listMeasurementUnits } from "../../api/measurementUnits";
@@ -298,13 +299,11 @@ export function RecipesScreen({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">{t("recipes.title")}</h2>
-        <div className="flex items-center gap-4">
-          <Button type="button" onClick={() => setPanel({ mode: "create" })}>
-            {t("recipes.addRecipe")}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-4">
+        <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
+          <Plus className="size-4" />
+          {t("recipes.addRecipe")}
+        </Button>
       </div>
 
       <ListToolbar

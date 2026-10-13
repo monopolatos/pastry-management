@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { ChefHat } from "lucide-react";
 import { createOwnerAccount } from "../../api/auth";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
@@ -47,7 +48,10 @@ export function CreateOwnerForm({ onCreated }: CreateOwnerFormProps) {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
-        <CardHeader>
+        <CardHeader className="flex flex-col items-center gap-2">
+          <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ChefHat className="size-5" />
+          </div>
           <CardTitle className="text-center font-heading text-lg">{t("app.title")}</CardTitle>
         </CardHeader>
         <CardContent>
