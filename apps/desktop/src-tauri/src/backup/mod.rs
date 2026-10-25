@@ -326,6 +326,38 @@ pub fn validate_backup_file(path: &Path) -> Result<ValidatedBackup, BackupError>
     })
 }
 
+/// Retries a fallible filesystem operation a few times with a short, increasing delay. Windows
+/// antivirus and search-indexing services routinely grab a brief exclusive lock on a file right
+/// after it's written or right before it's renamed/deleted, which surfaces as a transient "Access
+/// is denied" that clears on its own within a few hundred milliseconds. A handful of retries
+/// absorbs that; it costs nothing when the first attempt just succeeds, which is every time on
+/// Linux/macOS and the overwhelming majority of the time on Windows too.
+fn retry_transient_io<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+    const ATTEMPTS: u32 = 5;
+    let mut last_err = None;
+    for attempt in 0..ATTEMPTS {
+        match op() {
+            Ok(value) => return Ok(value),
+            Err(e) => {
+                last_err = Some(e);
+                if attempt + 1 < ATTEMPTS {
+                    std::thread::sleep(std::time::Duration::from_millis(
+                        150 * u64::from(attempt + 1),
+                    ));
+                }
+            }
+        }
+    }
+    Err(last_err.expect("loop runs at least once"))
+}
+
+/// Rewraps an [`std::io::Error`] with `path` folded into its message — the bare OS message alone
+/// (e.g. "Access is denied. (os error 5)") doesn't say which of several files in this function was
+/// involved, which makes a report of this error impossible to act on.
+fn annotate_path(err: std::io::Error, path: &Path) -> std::io::Error {
+    std::io::Error::new(err.kind(), format!("{} ({})", err, path.display()))
+}
+
 /// Full restore-safety sequence (docs/backup-and-updates.md §1):
 /// 1-2. Validate the backup (checksum + schema compatibility) — done first, before anything live
 ///      is touched, so an invalid backup fails loudly without side effects.
@@ -336,8 +368,9 @@ pub fn validate_backup_file(path: &Path) -> Result<ValidatedBackup, BackupError>
 /// 6. Reopen the live connection against the restored file so the running app sees the restored
 ///    data immediately, without requiring a restart.
 ///
-/// `live_conn` is replaced in place with a fresh connection to the restored database on success.
-/// On any failure at steps 1-4, `live_conn` and the live database file are both untouched.
+/// `live_conn` is replaced in place with a fresh connection on return either way: to the restored
+/// database on success, or back to the original, unmodified one if step 5 failed (a failed rename
+/// never partially applies — the live database file itself is always left exactly as it was).
 pub fn restore_backup(
     backup_path: &Path,
     live_db_path: &Path,
@@ -378,23 +411,43 @@ pub fn restore_backup(
             .unwrap_or_default()
             .to_string_lossy()
     ));
-    std::fs::copy(&staged_db, &swap_target)?;
-    std::fs::File::open(&swap_target)?.sync_all()?;
-    std::fs::rename(&swap_target, live_db_path)?;
+    // Closing our own handle above is necessary but not always sufficient on Windows — real-time
+    // antivirus scanning or search indexing routinely grabs a brief exclusive lock on a file right
+    // after it's written, which surfaces as the same "Access is denied" for an instant. These few
+    // retries are cheap and absorb exactly that; they do nothing if the first attempt just works.
+    let swap_result = (|| -> Result<(), BackupError> {
+        retry_transient_io(|| std::fs::copy(&staged_db, &swap_target))
+            .map_err(|e| BackupError::Io(annotate_path(e, &swap_target)))?;
+        retry_transient_io(|| std::fs::File::open(&swap_target)?.sync_all())
+            .map_err(|e| BackupError::Io(annotate_path(e, &swap_target)))?;
+        retry_transient_io(|| std::fs::rename(&swap_target, live_db_path))
+            .map_err(|e| BackupError::Io(annotate_path(e, live_db_path)))?;
+        Ok(())
+    })();
 
-    // Sidecar WAL/SHM files from the just-replaced database no longer apply.
-    let _ = std::fs::remove_file(live_db_path.with_file_name(format!(
-        "{}-wal",
-        live_db_path.file_name().unwrap_or_default().to_string_lossy()
-    )));
-    let _ = std::fs::remove_file(live_db_path.with_file_name(format!(
-        "{}-shm",
-        live_db_path.file_name().unwrap_or_default().to_string_lossy()
-    )));
+    // Sidecar WAL/SHM files from the just-replaced database no longer apply — only relevant if the
+    // swap above actually replaced the file.
+    if swap_result.is_ok() {
+        let _ = std::fs::remove_file(live_db_path.with_file_name(format!(
+            "{}-wal",
+            live_db_path.file_name().unwrap_or_default().to_string_lossy()
+        )));
+        let _ = std::fs::remove_file(live_db_path.with_file_name(format!(
+            "{}-shm",
+            live_db_path.file_name().unwrap_or_default().to_string_lossy()
+        )));
+    }
 
     let _ = std::fs::remove_dir_all(&staging_dir);
 
+    // Reopen live_db_path no matter what happened above. On success this is the newly restored
+    // database; on failure, live_db_path was never actually modified — `rename` either fully
+    // replaces the destination or doesn't touch it at all — so this reopens the original, unchanged
+    // data. Without this, a failed swap would leave `live_conn` pointing at the empty, unmigrated
+    // throwaway database opened above, breaking every feature in the app with "no such table"
+    // errors for the rest of the session even though nothing was actually lost on disk.
     *live_conn = crate::db::open_and_migrate(live_db_path)?;
+    swap_result?;
 
     Ok(())
 }
