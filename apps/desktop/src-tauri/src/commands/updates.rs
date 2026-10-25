@@ -161,21 +161,22 @@ pub fn update_update_settings(
     update_settings::update(&conn, input)
 }
 
+/// The Settings screen's "Check for updates now" button. Deliberately does NOT call
+/// `mark_checked_now` — that timestamp exists only to throttle the *silent, automatic* launch-time
+/// check (see `is_check_due`/`run_startup_update_check` in lib.rs) to at most once per 24h, not to
+/// track "was an update check performed recently" in general. Marking it here used to mean every
+/// manual check reset that clock, so publishing a new release and relaunching the app shortly after
+/// manually checking for a previous one never showed the update banner automatically — the
+/// launch-time check saw a recent `last_checked_at` and skipped itself, even though that "recent"
+/// check was a manual one with no bearing on whether a background check is due.
 #[tauri::command]
 pub async fn check_for_update(
     app: AppHandle,
-    db: State<'_, DbState>,
     pending: State<'_, PendingUpdateState>,
     downloaded: State<'_, DownloadedUpdateState>,
     progress: State<'_, UpdateProgressState>,
 ) -> AppResult<UpdateCheckResult> {
-    let result = check_now(&app, &pending, &downloaded, &progress).await?;
-
-    let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
-    let settings = update_settings::get_or_create_default(&conn)?;
-    update_settings::mark_checked_now(&conn, settings.id)?;
-
-    Ok(result)
+    check_now(&app, &pending, &downloaded, &progress).await
 }
 
 #[tauri::command]

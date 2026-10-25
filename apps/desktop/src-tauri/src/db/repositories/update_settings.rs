@@ -88,8 +88,10 @@ pub fn update(conn: &Connection, input: UpdateSettingsInput) -> AppResult<Update
     )?)
 }
 
-/// Records that an update check just ran, so the next app-launch check knows one isn't due again
-/// until 24h have elapsed (see `is_check_due`).
+/// Records that the silent, automatic launch-time check just ran, so the next launch knows one
+/// isn't due again until 24h have elapsed (see `is_check_due`). Only `run_startup_update_check`
+/// (lib.rs) should call this — the Settings screen's manual "check now" button deliberately does
+/// not, so an explicit check never postpones the next automatic one.
 pub fn mark_checked_now(conn: &Connection, id: i64) -> AppResult<()> {
     conn.execute(
         "UPDATE update_settings SET last_checked_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?1",
