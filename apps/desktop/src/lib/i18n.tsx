@@ -319,6 +319,7 @@ const en = {
   "rawMaterials.setStartingPriceHint": "(optional — you can add this later)",
   "rawMaterials.recordNewPrice": "Record a new price",
   "rawMaterials.recordNewPriceHint": "(optional — leave blank to keep the current price)",
+  "rawMaterials.purchasedFrom": "Purchased from",
   "rawMaterials.exportPdf": "Export PDF",
   "rawMaterials.pdfTitle": "Raw Materials Report",
   "rawMaterials.pdfGeneratedAt": "Generated {datetime}",
@@ -758,6 +759,7 @@ const el: Record<keyof typeof en, string> = {
   "rawMaterials.recordNewPrice": "Καταγραφή νέας τιμής",
   "rawMaterials.recordNewPriceHint":
     "(προαιρετικό — αφήστε το κενό για να διατηρηθεί η τρέχουσα τιμή)",
+  "rawMaterials.purchasedFrom": "Αγοράστηκε από",
   "rawMaterials.exportPdf": "Εξαγωγή PDF",
   "rawMaterials.pdfTitle": "Αναφορά Πρώτων Υλών",
   "rawMaterials.pdfGeneratedAt": "Δημιουργήθηκε {datetime}",

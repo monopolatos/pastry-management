@@ -338,12 +338,21 @@ export function RawMaterialForm({
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="material-purchase-supplier">
-            {t("common.supplier")}{" "}
+            {t("rawMaterials.purchasedFrom")}{" "}
             <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
           </Label>
           <Select
             value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
-            onValueChange={(value) => setPurchaseSupplierId(value === NONE_VALUE ? "" : value)}
+            onValueChange={(value) => {
+              const next = value === NONE_VALUE ? "" : value;
+              setPurchaseSupplierId(next);
+              // If no default supplier is set yet, assume this is also the material's default
+              // supplier going forward — without this, picking a supplier only here (and not in
+              // "Default supplier" above) silently leaves the material's own supplier unset.
+              if (next !== "" && defaultSupplierId === "") {
+                setDefaultSupplierId(next);
+              }
+            }}
           >
             <SelectTrigger id="material-purchase-supplier" className="w-full">
               <SelectValue />
