@@ -6,13 +6,14 @@ import type { CostingRawMaterial } from "@pastry-management/core";
 import * as categoriesApi from "../../api/categories";
 import * as rawMaterialsApi from "../../api/rawMaterials";
 import { chooseSavePath, writeBinaryFile } from "../../api/export";
-import { createPurchaseRecord } from "../../api/purchaseRecords";
+import { createPurchaseRecord, listPurchaseRecordsForMaterial } from "../../api/purchaseRecords";
 import { listRawMaterialCosting } from "../../api/recipes";
 import { listSuppliers } from "../../api/suppliers";
 import { UNIT_LABEL_KEYS } from "../../api/types";
 import type {
   BaseUnitCode,
   Category,
+  PurchaseRecord,
   RawMaterial,
   RawMaterialInput,
   Supplier,
@@ -43,7 +44,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { ListToolbar } from "../shared/ListToolbar";
 import type { ListToolbarFilter } from "../shared/ListToolbar";
 
-type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
+type Panel =
+  | { mode: "closed" }
+  | { mode: "create" }
+  | { mode: "edit"; material: RawMaterial; lastPurchase: PurchaseRecord | null };
 type SortField = "name" | "category" | "supplier" | "price" | "status";
 type StatusFilter = "" | "active" | "archived";
 
@@ -248,6 +252,18 @@ export function RawMaterialsScreen({
     refresh();
   }
 
+  async function openEdit(material: RawMaterial) {
+    let lastPurchase: PurchaseRecord | null = null;
+    try {
+      const records = await listPurchaseRecordsForMaterial(material.id);
+      lastPurchase = records[0] ?? null;
+    } catch {
+      // Pre-filling the price fields is a convenience, not a requirement — if the history fetch
+      // fails, still let the user open the form and enter everything by hand.
+    }
+    setPanel({ mode: "edit", material, lastPurchase });
+  }
+
   async function handleArchiveToggle(material: RawMaterial) {
     try {
       if (material.is_active) {
@@ -415,6 +431,7 @@ export function RawMaterialsScreen({
               initial={panel.material}
               suppliers={activeSuppliers}
               categories={activeCategories}
+              lastPurchase={panel.lastPurchase}
               onCreateCategory={handleCreateCategory}
               onSubmit={(input, priceUpdate) => handleUpdate(panel.material.id, input, priceUpdate)}
               onCancel={() => setPanel({ mode: "closed" })}
@@ -470,7 +487,7 @@ export function RawMaterialsScreen({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setPanel({ mode: "edit", material })}
+                          onClick={() => openEdit(material)}
                         >
                           {t("common.edit")}
                         </Button>

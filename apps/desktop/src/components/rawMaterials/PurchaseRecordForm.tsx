@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { createPurchaseRecord } from "../../api/purchaseRecords";
 import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABEL_KEYS } from "../../api/types";
-import type { RawMaterial, Supplier } from "../../api/types";
+import type { PurchaseRecord, RawMaterial, Supplier } from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
@@ -14,6 +14,9 @@ import { Textarea } from "../ui/textarea";
 interface PurchaseRecordFormProps {
   rawMaterial: RawMaterial;
   suppliers: Supplier[];
+  /** The material's most recent purchase record, if any — pre-fills quantity/unit/price below so
+   * logging an updated price doesn't mean re-entering the quantity too. */
+  lastPurchase?: PurchaseRecord | null;
   onCreated: () => void;
 }
 
@@ -33,7 +36,12 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: PurchaseRecordFormProps) {
+export function PurchaseRecordForm({
+  rawMaterial,
+  suppliers,
+  lastPurchase,
+  onCreated,
+}: PurchaseRecordFormProps) {
   const { t } = useI18n();
   // Filter the unit dropdown to units of the same kind (weight/volume/count) as the material's
   // base unit for a nicer UX — the backend is still the source of truth and rejects a mismatch
@@ -45,11 +53,13 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
 
   const [supplierId, setSupplierId] = useState<string>("");
   const [purchaseDate, setPurchaseDate] = useState(today());
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState(lastPurchase ? String(lastPurchase.quantity) : "");
   const [purchaseUnitCode, setPurchaseUnitCode] = useState<string>(
-    compatibleUnits[0] ?? rawMaterial.base_unit_code,
+    lastPurchase?.purchase_unit_code ?? compatibleUnits[0] ?? rawMaterial.base_unit_code,
   );
-  const [totalPrice, setTotalPrice] = useState("");
+  const [totalPrice, setTotalPrice] = useState(
+    lastPurchase ? (lastPurchase.total_price_micros / 1_000_000).toFixed(2) : "",
+  );
   const [expirationDate, setExpirationDate] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -103,6 +113,10 @@ export function PurchaseRecordForm({ rawMaterial, suppliers, onCreated }: Purcha
     <form className="flex max-w-xl flex-col gap-4" onSubmit={handleSubmit}>
       {formError.general && (
         <p className="text-sm font-medium text-destructive">{formError.general}</p>
+      )}
+
+      {lastPurchase && (
+        <p className="text-xs text-muted-foreground">{t("rawMaterials.prefilledFromLast")}</p>
       )}
 
       <div className="flex flex-col gap-1.5">

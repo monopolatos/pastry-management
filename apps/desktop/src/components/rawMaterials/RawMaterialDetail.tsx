@@ -160,7 +160,7 @@ export function RawMaterialDetail({
         )}
       </div>
 
-      {!isReadOnly && (
+      {!isReadOnly && !loading && (
         <div className="flex flex-col gap-2">
           <h3 className="font-heading text-base font-semibold">
             {t("rawMaterials.recordNewPurchase")}
@@ -170,6 +170,7 @@ export function RawMaterialDetail({
               <PurchaseRecordForm
                 rawMaterial={material}
                 suppliers={activeSuppliers}
+                lastPurchase={history[0] ?? null}
                 onCreated={refresh}
               />
             </CardContent>
