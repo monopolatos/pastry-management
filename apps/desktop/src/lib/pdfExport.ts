@@ -1,7 +1,14 @@
 import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import logoUrl from "../assets/logo.jpeg";
+// jsPDF's built-in fonts (helvetica/times/courier) only cover WinAnsi (Latin) characters — Greek
+// text renders as garbage with them. Noto Sans (SIL OFL, see assets/fonts/OFL.txt) covers Greek as
+// well as Latin, so it's embedded and used for every piece of text in this document instead.
+import notoSansRegularUrl from "../assets/fonts/NotoSans-Regular.ttf";
+import notoSansBoldUrl from "../assets/fonts/NotoSans-Bold.ttf";
 import { readCustomTheme } from "./customTheme";
+
+const PDF_FONT = "NotoSans";
 
 export interface RawMaterialPdfRow {
   name: string;
@@ -30,6 +37,25 @@ async function loadLogoDataUrl(): Promise<string> {
   return `data:image/jpeg;base64,${arrayBufferToBase64(buffer)}`;
 }
 
+async function loadFontBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  const buffer = await response.arrayBuffer();
+  return arrayBufferToBase64(buffer);
+}
+
+/** Registers Noto Sans (regular + bold) on `doc` under the `NotoSans` family name, so Greek (and
+ * any other non-Latin-1) text in the title, labels, and table renders correctly. */
+async function registerPdfFont(doc: jsPDF): Promise<void> {
+  const [regular, bold] = await Promise.all([
+    loadFontBase64(notoSansRegularUrl),
+    loadFontBase64(notoSansBoldUrl),
+  ]);
+  doc.addFileToVFS("NotoSans-Regular.ttf", regular);
+  doc.addFont("NotoSans-Regular.ttf", PDF_FONT, "normal");
+  doc.addFileToVFS("NotoSans-Bold.ttf", bold);
+  doc.addFont("NotoSans-Bold.ttf", PDF_FONT, "bold");
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!match) return [159, 90, 104];
@@ -52,10 +78,8 @@ export async function buildRawMaterialsPdf(
     columns: Record<keyof RawMaterialPdfRow, string>;
   },
 ): Promise<ArrayBuffer> {
-  const [logoDataUrl, doc] = await Promise.all([
-    loadLogoDataUrl(),
-    Promise.resolve(new jsPDF({ unit: "mm", format: "a4" })),
-  ]);
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const [logoDataUrl] = await Promise.all([loadLogoDataUrl(), registerPdfFont(doc)]);
 
   const accentHex = readCustomTheme().primary ?? FALLBACK_ACCENT;
   const accentRgb = hexToRgb(accentHex);
@@ -64,12 +88,12 @@ export async function buildRawMaterialsPdf(
 
   doc.addImage(logoDataUrl, "JPEG", margin, 10, 22, 22);
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(PDF_FONT, "bold");
   doc.setFontSize(18);
   doc.setTextColor(30, 30, 30);
   doc.text(options.title, margin + 28, 20);
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_FONT, "normal");
   doc.setFontSize(10);
   doc.setTextColor(110, 110, 110);
   doc.text(options.generatedAtLabel, margin + 28, 27);
@@ -91,8 +115,13 @@ export async function buildRawMaterialsPdf(
       ],
     ],
     body: rows.map((row) => [row.name, row.category, row.supplier, row.price, row.status]),
-    styles: { font: "helvetica", fontSize: 9.5, cellPadding: 2.4 },
-    headStyles: { fillColor: accentRgb, textColor: [255, 255, 255], fontStyle: "bold" },
+    styles: { font: PDF_FONT, fontStyle: "normal", fontSize: 9.5, cellPadding: 2.4 },
+    headStyles: {
+      font: PDF_FONT,
+      fillColor: accentRgb,
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
     alternateRowStyles: { fillColor: [247, 245, 246] },
   });
 
@@ -103,6 +132,7 @@ export async function buildRawMaterialsPdf(
   const pageHeight = doc.internal.pageSize.getHeight();
   for (let page = 1; page <= pageCount; page++) {
     doc.setPage(page);
+    doc.setFont(PDF_FONT, "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(140, 140, 140);
     doc.text(`${page} / ${pageCount}`, pageWidth - margin, pageHeight - 8, { align: "right" });
