@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::State;
 
+use crate::auth::{self, SessionState};
 use crate::backup;
 use crate::cloud::dropbox::DropboxProvider;
 use crate::cloud::{self, BackupStorageProvider, RemoteBackupHandle};
@@ -39,7 +40,11 @@ fn build_provider(conn: &rusqlite::Connection) -> AppResult<DropboxProvider> {
 }
 
 #[tauri::command]
-pub fn get_dropbox_settings(db: State<DbState>) -> AppResult<DropboxStatus> {
+pub fn get_dropbox_settings(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> AppResult<DropboxStatus> {
+    auth::require_backup_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     status(&conn)
 }
@@ -47,8 +52,10 @@ pub fn get_dropbox_settings(db: State<DbState>) -> AppResult<DropboxStatus> {
 #[tauri::command]
 pub fn update_dropbox_settings(
     db: State<DbState>,
+    session: State<SessionState>,
     input: DropboxSettingsInput,
 ) -> AppResult<DropboxStatus> {
+    auth::require_backup_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     dropbox_settings::update(&conn, input)?;
     status(&conn)
@@ -58,7 +65,9 @@ pub fn update_dropbox_settings(
 pub async fn dropbox_connect(
     app: tauri::AppHandle,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<DropboxStatus> {
+    auth::require_backup_access(&session)?;
     let app_key = {
         let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
         dropbox_settings::get_or_create_default(&conn)?
@@ -80,7 +89,11 @@ pub async fn dropbox_connect(
 }
 
 #[tauri::command]
-pub fn dropbox_disconnect(db: State<DbState>) -> AppResult<DropboxStatus> {
+pub fn dropbox_disconnect(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> AppResult<DropboxStatus> {
+    auth::require_backup_access(&session)?;
     cloud::delete_secret(DROPBOX_REFRESH_TOKEN_ACCOUNT)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     dropbox_settings::set_account_label(&conn, None)?;
@@ -88,7 +101,11 @@ pub fn dropbox_disconnect(db: State<DbState>) -> AppResult<DropboxStatus> {
 }
 
 #[tauri::command]
-pub async fn dropbox_test_connection(db: State<'_, DbState>) -> AppResult<()> {
+pub async fn dropbox_test_connection(
+    db: State<'_, DbState>,
+    session: State<'_, SessionState>,
+) -> AppResult<()> {
+    auth::require_backup_access(&session)?;
     let provider = {
         let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
         build_provider(&conn)?
@@ -99,8 +116,10 @@ pub async fn dropbox_test_connection(db: State<'_, DbState>) -> AppResult<()> {
 #[tauri::command]
 pub async fn dropbox_upload_backup(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     local_path: String,
 ) -> AppResult<RemoteBackupHandle> {
+    auth::require_backup_access(&session)?;
     let provider = {
         let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
         build_provider(&conn)?
@@ -118,7 +137,11 @@ pub async fn dropbox_upload_backup(
 }
 
 #[tauri::command]
-pub async fn dropbox_list_backups(db: State<'_, DbState>) -> AppResult<Vec<RemoteBackupHandle>> {
+pub async fn dropbox_list_backups(
+    db: State<'_, DbState>,
+    session: State<'_, SessionState>,
+) -> AppResult<Vec<RemoteBackupHandle>> {
+    auth::require_backup_access(&session)?;
     let provider = {
         let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
         build_provider(&conn)?
@@ -127,7 +150,12 @@ pub async fn dropbox_list_backups(db: State<'_, DbState>) -> AppResult<Vec<Remot
 }
 
 #[tauri::command]
-pub async fn dropbox_delete_backup(db: State<'_, DbState>, remote_id: String) -> AppResult<()> {
+pub async fn dropbox_delete_backup(
+    db: State<'_, DbState>,
+    session: State<'_, SessionState>,
+    remote_id: String,
+) -> AppResult<()> {
+    auth::require_backup_access(&session)?;
     let provider = {
         let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
         build_provider(&conn)?
@@ -148,9 +176,11 @@ pub async fn dropbox_delete_backup(db: State<'_, DbState>, remote_id: String) ->
 pub async fn dropbox_restore_backup(
     db: State<'_, DbState>,
     db_path: State<'_, DbPathState>,
+    session: State<'_, SessionState>,
     remote_id: String,
     remote_name: String,
 ) -> AppResult<()> {
+    auth::require_backup_access(&session)?;
     let provider = {
         let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
         build_provider(&conn)?

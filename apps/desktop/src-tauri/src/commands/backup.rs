@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 
+use crate::auth::{self, SessionState};
 use crate::backup::{self, BackupInfo};
 use crate::db::repositories::backup_settings::{self, BackupSettings, BackupSettingsInput};
 use crate::error::{AppError, AppResult};
@@ -19,7 +20,9 @@ fn default_backups_dir(db_path: &Path) -> PathBuf {
 pub fn get_backup_settings(
     db: State<DbState>,
     db_path: State<DbPathState>,
+    session: State<SessionState>,
 ) -> AppResult<BackupSettings> {
+    auth::require_backup_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     backup_settings::get_or_create_default(&conn, &default_backups_dir(&db_path.0))
 }
@@ -28,14 +31,20 @@ pub fn get_backup_settings(
 pub fn update_backup_settings(
     db: State<DbState>,
     db_path: State<DbPathState>,
+    session: State<SessionState>,
     input: BackupSettingsInput,
 ) -> AppResult<BackupSettings> {
+    auth::require_backup_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     backup_settings::update(&conn, &default_backups_dir(&db_path.0), input)
 }
 
 #[tauri::command]
-pub async fn choose_backup_directory(app: tauri::AppHandle) -> AppResult<Option<String>> {
+pub async fn choose_backup_directory(
+    app: tauri::AppHandle,
+    session: State<'_, SessionState>,
+) -> AppResult<Option<String>> {
+    auth::require_backup_access(&session)?;
     let (tx, rx) = std::sync::mpsc::channel();
     app.dialog().file().pick_folder(move |folder| {
         let _ = tx.send(folder);
@@ -50,8 +59,10 @@ pub async fn choose_backup_directory(app: tauri::AppHandle) -> AppResult<Option<
 pub fn create_backup(
     db: State<DbState>,
     db_path: State<DbPathState>,
+    session: State<SessionState>,
     label: Option<String>,
 ) -> AppResult<BackupInfo> {
+    auth::require_backup_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     let settings = backup_settings::get_or_create_default(&conn, &default_backups_dir(&db_path.0))?;
     let dest_dir = PathBuf::from(&settings.local_path);
@@ -69,7 +80,12 @@ pub fn create_backup(
 }
 
 #[tauri::command]
-pub fn list_backups(db: State<DbState>, db_path: State<DbPathState>) -> AppResult<Vec<BackupInfo>> {
+pub fn list_backups(
+    db: State<DbState>,
+    db_path: State<DbPathState>,
+    session: State<SessionState>,
+) -> AppResult<Vec<BackupInfo>> {
+    auth::require_backup_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     let settings = backup_settings::get_or_create_default(&conn, &default_backups_dir(&db_path.0))?;
     Ok(backup::list_backups(&PathBuf::from(&settings.local_path))?)
@@ -87,7 +103,11 @@ pub struct ValidatedBackupDto {
 /// email attachment). The picked path still has to pass `validate_backup_file`/`restore_backup`'s
 /// own checks before anything is touched.
 #[tauri::command]
-pub async fn choose_backup_file(app: tauri::AppHandle) -> AppResult<Option<String>> {
+pub async fn choose_backup_file(
+    app: tauri::AppHandle,
+    session: State<'_, SessionState>,
+) -> AppResult<Option<String>> {
+    auth::require_backup_access(&session)?;
     let (tx, rx) = std::sync::mpsc::channel();
     app.dialog()
         .file()
@@ -102,7 +122,11 @@ pub async fn choose_backup_file(app: tauri::AppHandle) -> AppResult<Option<Strin
 }
 
 #[tauri::command]
-pub fn validate_backup_file(path: String) -> AppResult<ValidatedBackupDto> {
+pub fn validate_backup_file(
+    session: State<SessionState>,
+    path: String,
+) -> AppResult<ValidatedBackupDto> {
+    auth::require_backup_access(&session)?;
     let validated = backup::validate_backup_file(&PathBuf::from(path))?;
     Ok(ValidatedBackupDto {
         app_version: validated.app_version,
@@ -115,8 +139,10 @@ pub fn validate_backup_file(path: String) -> AppResult<ValidatedBackupDto> {
 pub fn restore_backup(
     db: State<DbState>,
     db_path: State<DbPathState>,
+    session: State<SessionState>,
     path: String,
 ) -> AppResult<()> {
+    auth::require_backup_access(&session)?;
     let mut conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     let settings = backup_settings::get_or_create_default(&conn, &default_backups_dir(&db_path.0))?;
     backup::restore_backup(
@@ -129,7 +155,8 @@ pub fn restore_backup(
 }
 
 #[tauri::command]
-pub fn delete_backup(path: String) -> AppResult<()> {
+pub fn delete_backup(session: State<SessionState>, path: String) -> AppResult<()> {
+    auth::require_backup_access(&session)?;
     std::fs::remove_file(&path)
         .map_err(|e| AppError::new(format!("Could not delete backup file: {e}")))
 }

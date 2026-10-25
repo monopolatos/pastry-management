@@ -16,6 +16,9 @@ interface SessionContextValue {
   isReadOnly: boolean;
   /** Finance (expenses/income and their categories) is off-limits to employees entirely. */
   canSeeFinance: boolean;
+  /** Backup/restore (local and Dropbox) is off-limits to employees entirely — a backup contains
+   * the full database, finance included. */
+  canSeeBackup: boolean;
   canManageUsers: boolean;
 }
 
@@ -34,6 +37,7 @@ export function SessionProvider({
     role,
     isReadOnly: role === "employee",
     canSeeFinance: role !== "employee",
+    canSeeBackup: role !== "employee",
     canManageUsers: role === "owner" || role === "admin",
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

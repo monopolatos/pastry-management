@@ -147,7 +147,10 @@ function App() {
 
   const canManageUsers = session.user.role === "owner" || session.user.role === "admin";
   const canSeeFinance = session.user.role !== "employee";
-  const navItems = NAV_ITEMS.filter((item) => item.tab !== "finance" || canSeeFinance);
+  const canSeeBackup = session.user.role !== "employee";
+  const navItems = NAV_ITEMS.filter(
+    (item) => (item.tab !== "finance" || canSeeFinance) && (item.tab !== "backup" || canSeeBackup),
+  );
   const activeItem =
     navItems.find((item) => item.tab === activeTab) ??
     (activeTab === "users" ? { labelKey: "nav.users" as TranslationKey } : undefined);
@@ -259,7 +262,7 @@ function App() {
             {activeTab === "cost-calculator" && <CostCalculatorScreen />}
             {activeTab === "analytics" && <AnalyticsScreen />}
             {activeTab === "finance" && canSeeFinance && <FinanceScreen />}
-            {activeTab === "backup" && <BackupScreen />}
+            {activeTab === "backup" && canSeeBackup && <BackupScreen />}
             {activeTab === "settings" && <SettingsScreen />}
             {activeTab === "profile" && <ProfileScreen session={session} />}
             {activeTab === "users" && canManageUsers && <UsersSection />}

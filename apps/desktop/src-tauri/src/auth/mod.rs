@@ -277,6 +277,15 @@ pub fn require_finance_access(session: &SessionState) -> AppResult<()> {
     Ok(())
 }
 
+/// Backup/restore (local and cloud) is off-limits to employees entirely, the same "not even read
+/// access" boundary as finance — a backup contains the full database, finance included.
+pub fn require_backup_access(session: &SessionState) -> AppResult<()> {
+    if session_role(session)? == "employee" {
+        return Err(AppError::new("You don't have access to backups."));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -441,5 +450,12 @@ mod tests {
         assert!(require_finance_access(&session_with_role("employee")).is_err());
         assert!(require_finance_access(&session_with_role("owner")).is_ok());
         assert!(require_finance_access(&session_with_role("admin")).is_ok());
+    }
+
+    #[test]
+    fn require_backup_access_blocks_employees_but_allows_owner_and_admin() {
+        assert!(require_backup_access(&session_with_role("employee")).is_err());
+        assert!(require_backup_access(&session_with_role("owner")).is_ok());
+        assert!(require_backup_access(&session_with_role("admin")).is_ok());
     }
 }
