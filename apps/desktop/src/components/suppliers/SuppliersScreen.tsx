@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import * as suppliersApi from "../../api/suppliers";
 import type { Supplier, SupplierInput } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
+import { useSession } from "../../lib/session";
 import { SupplierForm } from "./SupplierForm";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; supplier:
 
 export function SuppliersScreen() {
   const { t, te } = useI18n();
+  const { isReadOnly } = useSession();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -93,10 +95,12 @@ export function SuppliersScreen() {
           />
           {t("common.showInactive")}
         </Label>
-        <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
-          <Plus className="size-4" />
-          {t("suppliers.addSupplier")}
-        </Button>
+        {!isReadOnly && (
+          <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
+            <Plus className="size-4" />
+            {t("suppliers.addSupplier")}
+          </Button>
+        )}
       </div>
 
       {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
@@ -142,7 +146,7 @@ export function SuppliersScreen() {
                 <TableHead>{t("suppliers.phone")}</TableHead>
                 <TableHead>{t("suppliers.email")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("common.actions")}</TableHead>
+                {!isReadOnly && <TableHead>{t("common.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -157,52 +161,55 @@ export function SuppliersScreen() {
                       {supplier.is_active ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPanel({ mode: "edit", supplier })}
-                      >
-                        {t("common.edit")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleArchiveToggle(supplier)}
-                      >
-                        {supplier.is_active ? t("common.archive") : t("common.reactivate")}
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button type="button" variant="destructive" size="sm">
-                            {t("common.delete")}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {t("common.deleteConfirmTitle").replace("{name}", supplier.name)}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t("suppliers.deleteConfirmBody")} {t("common.deleteCannotBeUndone")}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => handleDelete(supplier.id)}
-                            >
+                  {!isReadOnly && (
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPanel({ mode: "edit", supplier })}
+                        >
+                          {t("common.edit")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleArchiveToggle(supplier)}
+                        >
+                          {supplier.is_active ? t("common.archive") : t("common.reactivate")}
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="destructive" size="sm">
                               {t("common.delete")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t("common.deleteConfirmTitle").replace("{name}", supplier.name)}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t("suppliers.deleteConfirmBody")}{" "}
+                                {t("common.deleteCannotBeUndone")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => handleDelete(supplier.id)}
+                              >
+                                {t("common.delete")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

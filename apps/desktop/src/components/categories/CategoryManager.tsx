@@ -35,6 +35,9 @@ interface CategoryManagerProps {
   deleteConfirmBody: string;
   onChanged: () => void;
   api: CategoryManagerApi;
+  /** Hides add/rename/archive/delete controls, leaving just the read-only list — for an employee
+   * session, which has view-only access to operational categories. */
+  readOnly?: boolean;
 }
 
 const KNOWN_FIELDS = ["name"] as const;
@@ -53,6 +56,7 @@ export function CategoryManager({
   deleteConfirmBody,
   onChanged,
   api,
+  readOnly = false,
 }: CategoryManagerProps) {
   const { t, te } = useI18n();
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -150,15 +154,17 @@ export function CategoryManager({
             {title}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setAdding((v) => !v)}
-            >
-              <Plus className="size-4" />
-              {t("common.add")}
-            </Button>
+            {!readOnly && (
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setAdding((v) => !v)}
+              >
+                <Plus className="size-4" />
+                {t("common.add")}
+              </Button>
+            )}
             <label className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
               <input
                 type="checkbox"
@@ -254,64 +260,66 @@ export function CategoryManager({
                   <Badge variant={category.is_active ? "success" : "destructive"}>
                     {category.is_active ? t("common.active") : t("common.archived")}
                   </Badge>
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      title={t("common.edit")}
-                      onClick={() => startEdit(category)}
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      title={category.is_active ? t("common.archive") : t("common.reactivate")}
-                      onClick={() => handleArchiveToggle(category)}
-                    >
-                      {category.is_active ? (
-                        <Archive className="size-3.5" />
-                      ) : (
-                        <ArchiveRestore className="size-3.5" />
-                      )}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-destructive hover:text-destructive"
-                          title={t("common.delete")}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t("common.deleteConfirmTitle").replace("{name}", category.name)}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {deleteConfirmBody} {t("common.deleteCannotBeUndone")}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                          <AlertDialogAction
-                            variant="destructive"
-                            onClick={() => handleDelete(category.id)}
+                  {!readOnly && (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        title={t("common.edit")}
+                        onClick={() => startEdit(category)}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        title={category.is_active ? t("common.archive") : t("common.reactivate")}
+                        onClick={() => handleArchiveToggle(category)}
+                      >
+                        {category.is_active ? (
+                          <Archive className="size-3.5" />
+                        ) : (
+                          <ArchiveRestore className="size-3.5" />
+                        )}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-destructive hover:text-destructive"
+                            title={t("common.delete")}
                           >
-                            {t("common.delete")}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {t("common.deleteConfirmTitle").replace("{name}", category.name)}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {deleteConfirmBody} {t("common.deleteCannotBeUndone")}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction
+                              variant="destructive"
+                              onClick={() => handleDelete(category.id)}
+                            >
+                              {t("common.delete")}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </li>
               ),
             )}

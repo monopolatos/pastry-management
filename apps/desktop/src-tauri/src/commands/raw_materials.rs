@@ -1,5 +1,6 @@
 use tauri::State;
 
+use crate::auth::{self, SessionState};
 use crate::db::repositories::raw_materials::{self, RawMaterial, RawMaterialInput};
 use crate::error::{AppError, AppResult};
 use crate::DbState;
@@ -20,7 +21,12 @@ pub fn get_raw_material(db: State<DbState>, id: i64) -> AppResult<RawMaterial> {
 }
 
 #[tauri::command]
-pub fn create_raw_material(db: State<DbState>, input: RawMaterialInput) -> AppResult<RawMaterial> {
+pub fn create_raw_material(
+    db: State<DbState>,
+    session: State<SessionState>,
+    input: RawMaterialInput,
+) -> AppResult<RawMaterial> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     raw_materials::create(&conn, input)
 }
@@ -28,27 +34,44 @@ pub fn create_raw_material(db: State<DbState>, input: RawMaterialInput) -> AppRe
 #[tauri::command]
 pub fn update_raw_material(
     db: State<DbState>,
+    session: State<SessionState>,
     id: i64,
     input: RawMaterialInput,
 ) -> AppResult<RawMaterial> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     raw_materials::update(&conn, id, input)
 }
 
 #[tauri::command]
-pub fn archive_raw_material(db: State<DbState>, id: i64) -> AppResult<()> {
+pub fn archive_raw_material(
+    db: State<DbState>,
+    session: State<SessionState>,
+    id: i64,
+) -> AppResult<()> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     raw_materials::set_active(&conn, id, false)
 }
 
 #[tauri::command]
-pub fn reactivate_raw_material(db: State<DbState>, id: i64) -> AppResult<()> {
+pub fn reactivate_raw_material(
+    db: State<DbState>,
+    session: State<SessionState>,
+    id: i64,
+) -> AppResult<()> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     raw_materials::set_active(&conn, id, true)
 }
 
 #[tauri::command]
-pub fn delete_raw_material(db: State<DbState>, id: i64) -> AppResult<()> {
+pub fn delete_raw_material(
+    db: State<DbState>,
+    session: State<SessionState>,
+    id: i64,
+) -> AppResult<()> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     raw_materials::delete(&conn, id)
 }

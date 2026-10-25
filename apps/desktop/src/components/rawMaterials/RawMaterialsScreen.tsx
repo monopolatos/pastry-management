@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Download, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { resolveRawMaterialPrice } from "@pastry-management/core";
 import type { CostingRawMaterial } from "@pastry-management/core";
 import * as categoriesApi from "../../api/categories";
 import * as rawMaterialsApi from "../../api/rawMaterials";
+import { chooseSavePath, writeBinaryFile } from "../../api/export";
 import { createPurchaseRecord } from "../../api/purchaseRecords";
 import { listRawMaterialCosting } from "../../api/recipes";
 import { listSuppliers } from "../../api/suppliers";
@@ -16,11 +18,13 @@ import type {
   Supplier,
 } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
+import { buildRawMaterialsPdf } from "../../lib/pdfExport";
 import { compareNullable } from "../../lib/sorting";
+import { useSession } from "../../lib/session";
 import { ImportDialog } from "./ImportDialog";
 import { RawMaterialDetail } from "./RawMaterialDetail";
 import { RawMaterialForm } from "./RawMaterialForm";
-import type { InitialPurchaseInput } from "./RawMaterialForm";
+import type { PriceUpdateInput } from "./RawMaterialForm";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +44,7 @@ import { ListToolbar } from "../shared/ListToolbar";
 import type { ListToolbarFilter } from "../shared/ListToolbar";
 
 type Panel = { mode: "closed" } | { mode: "create" } | { mode: "edit"; material: RawMaterial };
-type SortField = "name" | "category" | "price" | "status";
+type SortField = "name" | "category" | "supplier" | "price" | "status";
 type StatusFilter = "" | "active" | "archived";
 
 function formatMoney(micros: number, digits: number): string {
@@ -60,6 +64,7 @@ export function RawMaterialsScreen({
   onAutoOpenCreateHandled,
 }: RawMaterialsScreenProps = {}) {
   const { t, te } = useI18n();
+  const { isReadOnly } = useSession();
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -67,7 +72,6 @@ export function RawMaterialsScreen({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ mode: "closed" });
-  const [rowError, setRowError] = useState<string | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
   const [justCreated, setJustCreated] = useState(false);
 
@@ -121,6 +125,14 @@ export function RawMaterialsScreen({
     [categories],
   );
 
+  const supplierName = useCallback(
+    (supplierId: number | null): string => {
+      if (supplierId === null) return "—";
+      return suppliers.find((s) => s.id === supplierId)?.name ?? `Supplier #${supplierId}`;
+    },
+    [suppliers],
+  );
+
   const unitLabel = useCallback(
     (code: string): string => {
       const key = UNIT_LABEL_KEYS[code as BaseUnitCode];
@@ -167,6 +179,10 @@ export function RawMaterialsScreen({
           return material.name;
         case "category":
           return material.category_id != null ? categoryName(material.category_id) : null;
+        case "supplier":
+          return material.default_supplier_id != null
+            ? supplierName(material.default_supplier_id)
+            : null;
         case "price":
           return resolvedPrice(material);
         case "status":
@@ -183,6 +199,7 @@ export function RawMaterialsScreen({
     sortField,
     sortDirection,
     categoryName,
+    supplierName,
     resolvedPrice,
   ]);
 
@@ -195,35 +212,43 @@ export function RawMaterialsScreen({
     return created;
   }
 
-  async function handleCreate(
-    input: RawMaterialInput,
-    initialPurchase: InitialPurchaseInput | null,
-  ) {
+  async function handleCreate(input: RawMaterialInput, priceUpdate: PriceUpdateInput | null) {
     const created = await rawMaterialsApi.createRawMaterial(input);
-    if (initialPurchase) {
+    if (priceUpdate) {
       await createPurchaseRecord({
         raw_material_id: created.id,
         expiration_date: null,
         notes: null,
-        ...initialPurchase,
+        ...priceUpdate,
       });
     }
     setPanel({ mode: "closed" });
     // Jump straight into the new material's detail view rather than back to the list — if no
     // starting price was given above, recording one is otherwise an easy-to-miss next step.
-    setJustCreated(!initialPurchase);
+    setJustCreated(!priceUpdate);
     setSelectedMaterial(created);
     refresh();
   }
 
-  async function handleUpdate(id: number, input: RawMaterialInput) {
+  async function handleUpdate(
+    id: number,
+    input: RawMaterialInput,
+    priceUpdate: PriceUpdateInput | null,
+  ) {
     await rawMaterialsApi.updateRawMaterial(id, input);
+    if (priceUpdate) {
+      await createPurchaseRecord({
+        raw_material_id: id,
+        expiration_date: null,
+        notes: null,
+        ...priceUpdate,
+      });
+    }
     setPanel({ mode: "closed" });
     refresh();
   }
 
   async function handleArchiveToggle(material: RawMaterial) {
-    setRowError(null);
     try {
       if (material.is_active) {
         await rawMaterialsApi.archiveRawMaterial(material.id);
@@ -232,17 +257,48 @@ export function RawMaterialsScreen({
       }
       refresh();
     } catch (err) {
-      setRowError(te(err));
+      toast.error(te(err));
     }
   }
 
   async function handleDelete(id: number) {
-    setRowError(null);
     try {
       await rawMaterialsApi.deleteRawMaterial(id);
       refresh();
     } catch (err) {
-      setRowError(te(err));
+      toast.error(te(err));
+    }
+  }
+
+  async function handleExportPdf() {
+    const path = await chooseSavePath("raw-materials", "pdf");
+    if (path === null) return;
+    try {
+      const rows = visibleMaterials.map((material) => ({
+        name: material.name,
+        category: categoryName(material.category_id),
+        supplier: supplierName(material.default_supplier_id),
+        price: priceLabel(material),
+        status: material.is_active ? t("common.active") : t("common.archived"),
+      }));
+      const pdfBytes = await buildRawMaterialsPdf(rows, {
+        title: t("rawMaterials.pdfTitle"),
+        generatedAtLabel: t("rawMaterials.pdfGeneratedAt").replace(
+          "{datetime}",
+          new Date().toLocaleString(),
+        ),
+        columns: {
+          name: t("common.name"),
+          category: t("common.category"),
+          supplier: t("common.supplier"),
+          price: t("rawMaterials.pricePerBaseUnit"),
+          status: t("common.status"),
+        },
+      });
+      await writeBinaryFile(path, pdfBytes);
+      toast.success(t("rawMaterials.exportSuccess"));
+    } catch (err) {
+      toast.error(te(err));
     }
   }
 
@@ -268,6 +324,7 @@ export function RawMaterialsScreen({
   const sortOptions = [
     { value: "name", label: t("common.name") },
     { value: "category", label: t("common.category") },
+    { value: "supplier", label: t("common.supplier") },
     { value: "price", label: t("common.price") },
     { value: "status", label: t("common.status") },
   ];
@@ -301,11 +358,19 @@ export function RawMaterialsScreen({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-end gap-4">
-        <ImportDialog onImported={refresh} />
-        <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
-          <Plus className="size-4" />
-          {t("rawMaterials.addRawMaterial")}
+        <Button type="button" variant="outline" className="gap-1.5" onClick={handleExportPdf}>
+          <Download className="size-4" />
+          {t("rawMaterials.exportPdf")}
         </Button>
+        {!isReadOnly && (
+          <>
+            <ImportDialog onImported={refresh} />
+            <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
+              <Plus className="size-4" />
+              {t("rawMaterials.addRawMaterial")}
+            </Button>
+          </>
+        )}
       </div>
 
       <ListToolbar
@@ -321,7 +386,6 @@ export function RawMaterialsScreen({
         sortLabel={t("common.sortBy")}
       />
 
-      {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
 
       {panel.mode === "create" && (
@@ -352,7 +416,7 @@ export function RawMaterialsScreen({
               suppliers={activeSuppliers}
               categories={activeCategories}
               onCreateCategory={handleCreateCategory}
-              onSubmit={(input) => handleUpdate(panel.material.id, input)}
+              onSubmit={(input, priceUpdate) => handleUpdate(panel.material.id, input, priceUpdate)}
               onCancel={() => setPanel({ mode: "closed" })}
             />
           </CardContent>
@@ -372,9 +436,10 @@ export function RawMaterialsScreen({
               <TableRow>
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.category")}</TableHead>
+                <TableHead>{t("common.supplier")}</TableHead>
                 <TableHead>{t("rawMaterials.pricePerBaseUnit")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("common.actions")}</TableHead>
+                {!isReadOnly && <TableHead>{t("common.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -391,59 +456,62 @@ export function RawMaterialsScreen({
                     </Button>
                   </TableCell>
                   <TableCell>{categoryName(material.category_id)}</TableCell>
+                  <TableCell>{supplierName(material.default_supplier_id)}</TableCell>
                   <TableCell>{priceLabel(material)}</TableCell>
                   <TableCell>
                     <Badge variant={material.is_active ? "success" : "destructive"}>
                       {material.is_active ? t("common.active") : t("common.archived")}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPanel({ mode: "edit", material })}
-                      >
-                        {t("common.edit")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleArchiveToggle(material)}
-                      >
-                        {material.is_active ? t("common.archive") : t("common.reactivate")}
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button type="button" variant="destructive" size="sm">
-                            {t("common.delete")}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {t("common.deleteConfirmTitle").replace("{name}", material.name)}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t("rawMaterials.deleteConfirmBody")}{" "}
-                              {t("common.deleteCannotBeUndone")}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              variant="destructive"
-                              onClick={() => handleDelete(material.id)}
-                            >
+                  {!isReadOnly && (
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPanel({ mode: "edit", material })}
+                        >
+                          {t("common.edit")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleArchiveToggle(material)}
+                        >
+                          {material.is_active ? t("common.archive") : t("common.reactivate")}
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="destructive" size="sm">
                               {t("common.delete")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t("common.deleteConfirmTitle").replace("{name}", material.name)}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t("rawMaterials.deleteConfirmBody")}{" "}
+                                {t("common.deleteCannotBeUndone")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => handleDelete(material.id)}
+                              >
+                                {t("common.delete")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

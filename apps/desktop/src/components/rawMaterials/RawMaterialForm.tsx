@@ -10,9 +10,10 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 
-/** An optional first purchase to record in the same step as creating the material, so a price can
- * be set immediately instead of requiring a second trip to the material's detail page. */
-export interface InitialPurchaseInput {
+/** An optional purchase/price record to save alongside the material — either its first price when
+ * creating it, or a new price point when editing it (what the raw materials list's "Edit" button
+ * now offers, instead of only being reachable from the material's detail page). */
+export interface PriceUpdateInput {
   supplier_id: number | null;
   purchase_date: string;
   quantity: number;
@@ -27,10 +28,7 @@ interface RawMaterialFormProps {
   /** Creates a new category (used by the inline "+ Add new category" option below) and returns
    * it, so the caller's category list refreshes and this form can select it immediately. */
   onCreateCategory: (name: string) => Promise<Category>;
-  onSubmit: (
-    input: RawMaterialInput,
-    initialPurchase: InitialPurchaseInput | null,
-  ) => Promise<void>;
+  onSubmit: (input: RawMaterialInput, priceUpdate: PriceUpdateInput | null) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -80,8 +78,9 @@ export function RawMaterialForm({
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
-  // Initial-purchase fields — create mode only (see isCreate below). Left blank, no purchase is
-  // recorded; the material can still be given its first price later from its detail page.
+  // Price-update fields, shared by both modes (see the "Set a starting price"/"Record a new
+  // price" fieldset below). Left blank, no purchase record is created — the material keeps
+  // whatever price (or lack of one) it already had.
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [purchaseQuantity, setPurchaseQuantity] = useState("");
@@ -140,9 +139,9 @@ export function RawMaterialForm({
       return;
     }
 
-    const wantsInitialPurchase = purchaseQuantity.trim() !== "" || purchaseTotalPrice.trim() !== "";
-    let initialPurchase: InitialPurchaseInput | null = null;
-    if (isCreate && wantsInitialPurchase) {
+    const wantsPriceUpdate = purchaseQuantity.trim() !== "" || purchaseTotalPrice.trim() !== "";
+    let priceUpdate: PriceUpdateInput | null = null;
+    if (wantsPriceUpdate) {
       const quantityNumber = parseFloat(purchaseQuantity);
       if (!Number.isFinite(quantityNumber) || quantityNumber <= 0) {
         formError.handle(
@@ -162,7 +161,7 @@ export function RawMaterialForm({
         );
         return;
       }
-      initialPurchase = {
+      priceUpdate = {
         supplier_id: purchaseSupplierId === "" ? null : Number(purchaseSupplierId),
         purchase_date: purchaseDate,
         quantity: quantityNumber,
@@ -184,7 +183,7 @@ export function RawMaterialForm({
           pricing_strategy_config: initial?.pricing_strategy_config ?? null,
           notes: emptyToNull(notes),
         },
-        initialPurchase,
+        priceUpdate,
       );
     } catch (err) {
       formError.handle(err, KNOWN_FIELDS);
@@ -327,101 +326,99 @@ export function RawMaterialForm({
         <Textarea id="material-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
-      {isCreate && (
-        <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
-          <legend className="px-1 text-sm font-semibold">
-            {t("rawMaterials.setStartingPrice")}{" "}
-            <span className="font-normal text-muted-foreground">
-              {t("rawMaterials.setStartingPriceHint")}
-            </span>
-          </legend>
+      <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
+        <legend className="px-1 text-sm font-semibold">
+          {isCreate ? t("rawMaterials.setStartingPrice") : t("rawMaterials.recordNewPrice")}{" "}
+          <span className="font-normal text-muted-foreground">
+            {isCreate
+              ? t("rawMaterials.setStartingPriceHint")
+              : t("rawMaterials.recordNewPriceHint")}
+          </span>
+        </legend>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-supplier">
-              {t("common.supplier")}{" "}
-              <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
-            </Label>
-            <Select
-              value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
-              onValueChange={(value) => setPurchaseSupplierId(value === NONE_VALUE ? "" : value)}
-            >
-              <SelectTrigger id="material-purchase-supplier" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={String(supplier.id)}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="material-purchase-supplier">
+            {t("common.supplier")}{" "}
+            <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
+          </Label>
+          <Select
+            value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
+            onValueChange={(value) => setPurchaseSupplierId(value === NONE_VALUE ? "" : value)}
+          >
+            <SelectTrigger id="material-purchase-supplier" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
+              {suppliers.map((supplier) => (
+                <SelectItem key={supplier.id} value={String(supplier.id)}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-date">{t("purchaseRecord.purchaseDate")}</Label>
-            <Input
-              id="material-purchase-date"
-              type="date"
-              value={purchaseDate}
-              onChange={(e) => setPurchaseDate(e.target.value)}
-            />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="material-purchase-date">{t("purchaseRecord.purchaseDate")}</Label>
+          <Input
+            id="material-purchase-date"
+            type="date"
+            value={purchaseDate}
+            onChange={(e) => setPurchaseDate(e.target.value)}
+          />
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-quantity">{t("common.quantity")}</Label>
-            <Input
-              id="material-purchase-quantity"
-              type="number"
-              step="any"
-              min="0"
-              value={purchaseQuantity}
-              onChange={(e) => setPurchaseQuantity(e.target.value)}
-            />
-            {formError.fieldError("purchase_quantity") && (
-              <p className="text-sm text-destructive">
-                {formError.fieldError("purchase_quantity")}
-              </p>
-            )}
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="material-purchase-quantity">{t("common.quantity")}</Label>
+          <Input
+            id="material-purchase-quantity"
+            type="number"
+            step="any"
+            min="0"
+            value={purchaseQuantity}
+            onChange={(e) => setPurchaseQuantity(e.target.value)}
+          />
+          {formError.fieldError("purchase_quantity") && (
+            <p className="text-sm text-destructive">{formError.fieldError("purchase_quantity")}</p>
+          )}
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-unit">{t("purchaseRecord.purchaseUnit")}</Label>
-            <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
-              <SelectTrigger id="material-purchase-unit" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {compatiblePurchaseUnits.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {t(UNIT_LABEL_KEYS[code])}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="material-purchase-unit">{t("purchaseRecord.purchaseUnit")}</Label>
+          <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
+            <SelectTrigger id="material-purchase-unit" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {compatiblePurchaseUnits.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {t(UNIT_LABEL_KEYS[code])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-total-price">
-              {t("purchaseRecord.totalPricePaid")}
-            </Label>
-            <Input
-              id="material-purchase-total-price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={purchaseTotalPrice}
-              onChange={(e) => setPurchaseTotalPrice(e.target.value)}
-            />
-            {formError.fieldError("purchase_total_price") && (
-              <p className="text-sm text-destructive">
-                {formError.fieldError("purchase_total_price")}
-              </p>
-            )}
-          </div>
-        </fieldset>
-      )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="material-purchase-total-price">
+            {t("purchaseRecord.totalPricePaid")}
+          </Label>
+          <Input
+            id="material-purchase-total-price"
+            type="number"
+            step="0.01"
+            min="0"
+            value={purchaseTotalPrice}
+            onChange={(e) => setPurchaseTotalPrice(e.target.value)}
+          />
+          {formError.fieldError("purchase_total_price") && (
+            <p className="text-sm text-destructive">
+              {formError.fieldError("purchase_total_price")}
+            </p>
+          )}
+        </div>
+      </fieldset>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={submitting}>

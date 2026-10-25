@@ -32,6 +32,12 @@ export function listBackups(): Promise<BackupInfo[]> {
   return invoke("list_backups");
 }
 
+/** Opens a native file picker filtered to `.zip`, for importing a backup from anywhere on disk —
+ * not just one already in the managed local backups folder. Resolves to `null` if cancelled. */
+export function chooseBackupFile(): Promise<string | null> {
+  return invoke("choose_backup_file");
+}
+
 export function validateBackupFile(path: string): Promise<ValidatedBackup> {
   return invoke("validate_backup_file", { path });
 }

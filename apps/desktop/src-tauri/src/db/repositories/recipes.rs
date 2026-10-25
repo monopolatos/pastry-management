@@ -1000,8 +1000,10 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../../../migrations/0008_recipe_portions.sql"))
             .unwrap();
-        conn.execute_batch(include_str!("../../../migrations/0010_recipe_categories.sql"))
-            .unwrap();
+        conn.execute_batch(include_str!(
+            "../../../migrations/0010_recipe_categories.sql"
+        ))
+        .unwrap();
         conn
     }
 

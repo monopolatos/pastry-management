@@ -8,6 +8,7 @@ import { describeCostingError } from "../../lib/costingErrors";
 import { translateErrorMessage } from "../../lib/errorTranslations";
 import { useI18n } from "../../lib/i18n";
 import { parseInstructionSteps } from "../../lib/recipeSteps";
+import { useSession } from "../../lib/session";
 import { RecipeCostBreakdown } from "./RecipeCostBreakdown";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -41,6 +42,7 @@ function formatDateTime(iso: string): string {
  */
 export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
   const { t, te, locale } = useI18n();
+  const { isReadOnly } = useSession();
   const [graph, setGraph] = useState<RecipeCostingGraph | null>(null);
   const [breakdown, setBreakdown] = useState<CostBreakdown | null>(null);
   const [costLoading, setCostLoading] = useState(true);
@@ -299,11 +301,13 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
               )}
             </p>
 
-            <div>
-              <Button type="button" onClick={handleSaveCost} disabled={saving}>
-                {saving ? t("common.saving") : t("recipes.saveThisCost")}
-              </Button>
-            </div>
+            {!isReadOnly && (
+              <div>
+                <Button type="button" onClick={handleSaveCost} disabled={saving}>
+                  {saving ? t("common.saving") : t("recipes.saveThisCost")}
+                </Button>
+              </div>
+            )}
             {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
           </>
         )}

@@ -93,7 +93,9 @@ pub fn update(conn: &Connection, id: i64, input: RecipeCategoryInput) -> AppResu
         )
         .map_err(|e| map_unique_violation(e, name))?;
     if affected == 0 {
-        return Err(AppError::new(format!("Recipe category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Recipe category {id} was not found."
+        )));
     }
     get(conn, id)
 }
@@ -104,7 +106,9 @@ pub fn set_active(conn: &Connection, id: i64, active: bool) -> AppResult<()> {
         params![active as i64, id],
     )?;
     if affected == 0 {
-        return Err(AppError::new(format!("Recipe category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Recipe category {id} was not found."
+        )));
     }
     Ok(())
 }
@@ -124,7 +128,9 @@ pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
     }
     let affected = conn.execute("DELETE FROM recipe_categories WHERE id = ?1", [id])?;
     if affected == 0 {
-        return Err(AppError::new(format!("Recipe category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Recipe category {id} was not found."
+        )));
     }
     Ok(())
 }
@@ -143,8 +149,10 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../../../migrations/0007_categories.sql"))
             .unwrap();
-        conn.execute_batch(include_str!("../../../migrations/0010_recipe_categories.sql"))
-            .unwrap();
+        conn.execute_batch(include_str!(
+            "../../../migrations/0010_recipe_categories.sql"
+        ))
+        .unwrap();
         conn
     }
 

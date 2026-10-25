@@ -81,11 +81,7 @@ pub fn create(conn: &Connection, input: IncomeCategoryInput) -> AppResult<Income
     get(conn, conn.last_insert_rowid())
 }
 
-pub fn update(
-    conn: &Connection,
-    id: i64,
-    input: IncomeCategoryInput,
-) -> AppResult<IncomeCategory> {
+pub fn update(conn: &Connection, id: i64, input: IncomeCategoryInput) -> AppResult<IncomeCategory> {
     validate(&input)?;
     let name = input.name.trim();
     let affected = conn
@@ -95,7 +91,9 @@ pub fn update(
         )
         .map_err(|e| map_unique_violation(e, name))?;
     if affected == 0 {
-        return Err(AppError::new(format!("Income category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Income category {id} was not found."
+        )));
     }
     get(conn, id)
 }
@@ -106,7 +104,9 @@ pub fn set_active(conn: &Connection, id: i64, active: bool) -> AppResult<()> {
         params![active as i64, id],
     )?;
     if affected == 0 {
-        return Err(AppError::new(format!("Income category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Income category {id} was not found."
+        )));
     }
     Ok(())
 }
@@ -126,7 +126,9 @@ pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
     }
     let affected = conn.execute("DELETE FROM income_categories WHERE id = ?1", [id])?;
     if affected == 0 {
-        return Err(AppError::new(format!("Income category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Income category {id} was not found."
+        )));
     }
     Ok(())
 }

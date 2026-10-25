@@ -137,6 +137,10 @@ const en = {
     "Restore complete. The app now reflects the restored data — no restart needed.",
   "backup.deleteConfirmTitle": "Delete this backup?",
   "backup.deleteConfirmBody": "This permanently deletes the backup file. This cannot be undone.",
+  "backup.importBackup": "Import backup…",
+  "backup.importConfirmTitle": "Restore from this backup file?",
+  "backup.importConfirmBody":
+    "This file was created by app version {version} on {datetime}. Restoring it replaces all current data with its contents. A safety backup of your current data is taken automatically first, so you can undo this by restoring that one if needed.",
 
   "backup.dropboxTitle": "Dropbox Cloud Backup",
   "backup.dropboxIntro":
@@ -313,6 +317,12 @@ const en = {
   "rawMaterials.defaultSupplier": "Default supplier",
   "rawMaterials.setStartingPrice": "Set a starting price",
   "rawMaterials.setStartingPriceHint": "(optional — you can add this later)",
+  "rawMaterials.recordNewPrice": "Record a new price",
+  "rawMaterials.recordNewPriceHint": "(optional — leave blank to keep the current price)",
+  "rawMaterials.exportPdf": "Export PDF",
+  "rawMaterials.pdfTitle": "Raw Materials Report",
+  "rawMaterials.pdfGeneratedAt": "Generated {datetime}",
+  "rawMaterials.exportSuccess": "PDF exported successfully.",
 
   "categories.newCategory": "New category",
   "categories.empty": "No categories yet.",
@@ -563,6 +573,10 @@ const el: Record<keyof typeof en, string> = {
   "backup.deleteConfirmTitle": "Διαγραφή αυτού του αντιγράφου ασφαλείας;",
   "backup.deleteConfirmBody":
     "Αυτό διαγράφει οριστικά το αρχείο αντιγράφου ασφαλείας. Αυτό δεν μπορεί να αναιρεθεί.",
+  "backup.importBackup": "Εισαγωγή αντιγράφου ασφαλείας…",
+  "backup.importConfirmTitle": "Επαναφορά από αυτό το αρχείο αντιγράφου ασφαλείας;",
+  "backup.importConfirmBody":
+    "Αυτό το αρχείο δημιουργήθηκε από την έκδοση εφαρμογής {version} στις {datetime}. Η επαναφορά του αντικαθιστά όλα τα τρέχοντα δεδομένα με το περιεχόμενό του. Λαμβάνεται αυτόματα πρώτα ένα αντίγραφο ασφαλείας των τρεχόντων δεδομένων σας, ώστε να μπορείτε να αναιρέσετε αυτή την ενέργεια επαναφέροντας εκείνο αν χρειαστεί.",
 
   "backup.dropboxTitle": "Αντίγραφα Ασφαλείας στο Dropbox",
   "backup.dropboxIntro":
@@ -741,6 +755,13 @@ const el: Record<keyof typeof en, string> = {
   "rawMaterials.defaultSupplier": "Προεπιλεγμένος προμηθευτής",
   "rawMaterials.setStartingPrice": "Ορισμός αρχικής τιμής",
   "rawMaterials.setStartingPriceHint": "(προαιρετικό — μπορείτε να το προσθέσετε αργότερα)",
+  "rawMaterials.recordNewPrice": "Καταγραφή νέας τιμής",
+  "rawMaterials.recordNewPriceHint":
+    "(προαιρετικό — αφήστε το κενό για να διατηρηθεί η τρέχουσα τιμή)",
+  "rawMaterials.exportPdf": "Εξαγωγή PDF",
+  "rawMaterials.pdfTitle": "Αναφορά Πρώτων Υλών",
+  "rawMaterials.pdfGeneratedAt": "Δημιουργήθηκε {datetime}",
+  "rawMaterials.exportSuccess": "Το PDF εξήχθη με επιτυχία.",
 
   "categories.newCategory": "Νέα κατηγορία",
   "categories.empty": "Δεν υπάρχουν ακόμη κατηγορίες.",

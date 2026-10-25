@@ -48,6 +48,7 @@ import {
 } from "./components/ui/sidebar";
 import { useI18n } from "./lib/i18n";
 import type { TranslationKey } from "./lib/i18n";
+import { SessionProvider } from "./lib/session";
 import { USER_ROLE_LABEL_KEYS } from "./api/types";
 import type { SessionInfo } from "./api/types";
 
@@ -145,121 +146,127 @@ function App() {
   }
 
   const canManageUsers = session.user.role === "owner" || session.user.role === "admin";
+  const canSeeFinance = session.user.role !== "employee";
+  const navItems = NAV_ITEMS.filter((item) => item.tab !== "finance" || canSeeFinance);
   const activeItem =
-    NAV_ITEMS.find((item) => item.tab === activeTab) ??
+    navItems.find((item) => item.tab === activeTab) ??
     (activeTab === "users" ? { labelKey: "nav.users" as TranslationKey } : undefined);
 
   return (
-    <SidebarProvider>
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-1">
-            <ChefHat className="size-5 shrink-0 text-primary" />
-            <span className="truncate font-heading text-sm font-semibold group-data-[collapsible=icon]:hidden">
-              {t("app.title")}
-            </span>
-          </div>
-        </SidebarHeader>
-
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV_ITEMS.map((item) => (
-                  <SidebarMenuItem key={item.tab}>
-                    <SidebarMenuButton
-                      isActive={activeTab === item.tab}
-                      tooltip={t(item.labelKey)}
-                      onClick={() => setActiveTab(item.tab)}
-                    >
-                      <item.icon />
-                      <span>{t(item.labelKey)}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-
-                {canManageUsers && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={activeTab === "users"}
-                      tooltip={t("nav.users")}
-                      onClick={() => setActiveTab("users")}
-                    >
-                      <UsersIcon />
-                      <span>{t("nav.users")}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarSeparator />
-
-        <SidebarFooter>
-          <div className="flex items-center gap-2 px-2 py-1.5">
-            <Avatar className="size-7 shrink-0">
-              <AvatarFallback className="text-xs">{initials(session.user.username)}</AvatarFallback>
-            </Avatar>
-            <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-sm font-medium">{session.user.username}</span>
-              <span className="truncate text-xs capitalize text-muted-foreground">
-                {t(USER_ROLE_LABEL_KEYS[session.user.role])}
+    <SessionProvider session={session}>
+      <SidebarProvider>
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <div className="flex items-center gap-2 px-2 py-1">
+              <ChefHat className="size-5 shrink-0 text-primary" />
+              <span className="truncate font-heading text-sm font-semibold group-data-[collapsible=icon]:hidden">
+                {t("app.title")}
               </span>
             </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center"
-            onClick={handleLogout}
-          >
-            <LogOut />
-            <span className="group-data-[collapsible=icon]:hidden">{t("common.logout")}</span>
-          </Button>
-        </SidebarFooter>
-      </Sidebar>
+          </SidebarHeader>
 
-      <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-          <h1 className="font-heading text-sm font-semibold">
-            {activeItem ? t(activeItem.labelKey) : ""}
-          </h1>
-        </header>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {navItems.map((item) => (
+                    <SidebarMenuItem key={item.tab}>
+                      <SidebarMenuButton
+                        isActive={activeTab === item.tab}
+                        tooltip={t(item.labelKey)}
+                        onClick={() => setActiveTab(item.tab)}
+                      >
+                        <item.icon />
+                        <span>{t(item.labelKey)}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
 
-        <UpdateBanner />
+                  {canManageUsers && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={activeTab === "users"}
+                        tooltip={t("nav.users")}
+                        onClick={() => setActiveTab("users")}
+                      >
+                        <UsersIcon />
+                        <span>{t("nav.users")}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
 
-        <main className="flex-1 overflow-y-auto p-6">
-          {activeTab === "dashboard" && (
-            <DashboardScreen onAddRawMaterial={goToAddRawMaterial} onAddRecipe={goToAddRecipe} />
-          )}
-          {activeTab === "raw-materials" && (
-            <RawMaterialsScreen
-              autoOpenCreate={autoCreateRawMaterial}
-              onAutoOpenCreateHandled={() => setAutoCreateRawMaterial(false)}
-            />
-          )}
-          {activeTab === "suppliers" && <SuppliersScreen />}
-          {activeTab === "recipes" && (
-            <RecipesScreen
-              autoOpenCreate={autoCreateRecipe}
-              onAutoOpenCreateHandled={() => setAutoCreateRecipe(false)}
-            />
-          )}
-          {activeTab === "categories" && <CategoriesScreen />}
-          {activeTab === "cost-calculator" && <CostCalculatorScreen />}
-          {activeTab === "analytics" && <AnalyticsScreen />}
-          {activeTab === "finance" && <FinanceScreen />}
-          {activeTab === "backup" && <BackupScreen />}
-          {activeTab === "settings" && <SettingsScreen />}
-          {activeTab === "profile" && <ProfileScreen session={session} />}
-          {activeTab === "users" && canManageUsers && <UsersSection />}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+          <SidebarSeparator />
+
+          <SidebarFooter>
+            <div className="flex items-center gap-2 px-2 py-1.5">
+              <Avatar className="size-7 shrink-0">
+                <AvatarFallback className="text-xs">
+                  {initials(session.user.username)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+                <span className="truncate text-sm font-medium">{session.user.username}</span>
+                <span className="truncate text-xs capitalize text-muted-foreground">
+                  {t(USER_ROLE_LABEL_KEYS[session.user.role])}
+                </span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center"
+              onClick={handleLogout}
+            >
+              <LogOut />
+              <span className="group-data-[collapsible=icon]:hidden">{t("common.logout")}</span>
+            </Button>
+          </SidebarFooter>
+        </Sidebar>
+
+        <SidebarInset>
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger />
+            <h1 className="font-heading text-sm font-semibold">
+              {activeItem ? t(activeItem.labelKey) : ""}
+            </h1>
+          </header>
+
+          <UpdateBanner />
+
+          <main className="flex-1 overflow-y-auto p-6">
+            {activeTab === "dashboard" && (
+              <DashboardScreen onAddRawMaterial={goToAddRawMaterial} onAddRecipe={goToAddRecipe} />
+            )}
+            {activeTab === "raw-materials" && (
+              <RawMaterialsScreen
+                autoOpenCreate={autoCreateRawMaterial}
+                onAutoOpenCreateHandled={() => setAutoCreateRawMaterial(false)}
+              />
+            )}
+            {activeTab === "suppliers" && <SuppliersScreen />}
+            {activeTab === "recipes" && (
+              <RecipesScreen
+                autoOpenCreate={autoCreateRecipe}
+                onAutoOpenCreateHandled={() => setAutoCreateRecipe(false)}
+              />
+            )}
+            {activeTab === "categories" && <CategoriesScreen />}
+            {activeTab === "cost-calculator" && <CostCalculatorScreen />}
+            {activeTab === "analytics" && <AnalyticsScreen />}
+            {activeTab === "finance" && canSeeFinance && <FinanceScreen />}
+            {activeTab === "backup" && <BackupScreen />}
+            {activeTab === "settings" && <SettingsScreen />}
+            {activeTab === "profile" && <ProfileScreen session={session} />}
+            {activeTab === "users" && canManageUsers && <UsersSection />}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </SessionProvider>
   );
 }
 

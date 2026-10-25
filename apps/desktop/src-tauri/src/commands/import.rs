@@ -13,7 +13,7 @@ use serde::Serialize;
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 
-use crate::auth::SessionState;
+use crate::auth::{self, SessionState};
 use crate::db::repositories::{categories, purchase_records, raw_materials};
 use crate::error::{AppError, AppResult};
 use crate::{import, DbState};
@@ -94,6 +94,7 @@ pub fn import_from_excel(
     session: State<SessionState>,
     path: String,
 ) -> AppResult<ImportSummary> {
+    auth::require_write_access(&session)?;
     let (products_range, categories_range) =
         import::read_workbook(&PathBuf::from(path)).map_err(AppError::new)?;
 

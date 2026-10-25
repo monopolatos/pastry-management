@@ -245,6 +245,38 @@ pub fn change_password(
     Ok(())
 }
 
+fn session_role(session: &SessionState) -> AppResult<String> {
+    let guard = session.0.lock().map_err(|e| AppError::new(e.to_string()))?;
+    guard
+        .as_ref()
+        .map(|s| s.user.role.clone())
+        .ok_or_else(|| AppError::new("You must be signed in to do that."))
+}
+
+/// Employees have read-only access to operational data (raw materials, suppliers, recipes, and
+/// their categories) — every command that creates, edits, archives, reactivates, or deletes one of
+/// those calls this first. The frontend also hides the corresponding buttons, but this is the
+/// actual enforcement boundary: a Tauri command is directly callable regardless of what the UI
+/// shows.
+pub fn require_write_access(session: &SessionState) -> AppResult<()> {
+    if session_role(session)? == "employee" {
+        return Err(AppError::new(
+            "Your account has view-only access. Ask an owner or admin to make this change.",
+        ));
+    }
+    Ok(())
+}
+
+/// Finance (expenses, income, and their categories) is off-limits to employees entirely, not just
+/// for editing — the "economics" tab is meant to be out of reach, so this also guards the list/read
+/// commands, not only the mutating ones.
+pub fn require_finance_access(session: &SessionState) -> AppResult<()> {
+    if session_role(session)? == "employee" {
+        return Err(AppError::new("You don't have access to financial data."));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -376,5 +408,38 @@ mod tests {
 
         let err = change_password(&conn, user.id, "password123", "short").unwrap_err();
         assert_eq!(err.field.as_deref(), Some("password"));
+    }
+
+    fn session_with_role(role: &str) -> SessionState {
+        SessionState(Mutex::new(Some(SessionInfo {
+            token: "test-token".into(),
+            user: UserPublic {
+                id: 1,
+                username: "test".into(),
+                role: role.into(),
+                is_active: true,
+                created_at: "2024-01-01T00:00:00Z".into(),
+            },
+            issued_at: "2024-01-01T00:00:00Z".into(),
+        })))
+    }
+
+    #[test]
+    fn require_write_access_blocks_employees_but_allows_owner_and_admin() {
+        assert!(require_write_access(&session_with_role("employee")).is_err());
+        assert!(require_write_access(&session_with_role("owner")).is_ok());
+        assert!(require_write_access(&session_with_role("admin")).is_ok());
+    }
+
+    #[test]
+    fn require_write_access_requires_a_signed_in_session() {
+        assert!(require_write_access(&SessionState(Mutex::new(None))).is_err());
+    }
+
+    #[test]
+    fn require_finance_access_blocks_employees_but_allows_owner_and_admin() {
+        assert!(require_finance_access(&session_with_role("employee")).is_err());
+        assert!(require_finance_access(&session_with_role("owner")).is_ok());
+        assert!(require_finance_access(&session_with_role("admin")).is_ok());
     }
 }

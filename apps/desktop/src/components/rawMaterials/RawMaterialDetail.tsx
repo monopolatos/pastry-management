@@ -10,6 +10,7 @@ import type {
   Supplier,
 } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
+import { useSession } from "../../lib/session";
 import { PurchaseRecordForm } from "./PurchaseRecordForm";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -38,6 +39,7 @@ export function RawMaterialDetail({
   onBack,
 }: RawMaterialDetailProps) {
   const { t, te } = useI18n();
+  const { isReadOnly } = useSession();
   const [history, setHistory] = useState<PurchaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -158,20 +160,22 @@ export function RawMaterialDetail({
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="font-heading text-base font-semibold">
-          {t("rawMaterials.recordNewPurchase")}
-        </h3>
-        <Card>
-          <CardContent>
-            <PurchaseRecordForm
-              rawMaterial={material}
-              suppliers={activeSuppliers}
-              onCreated={refresh}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      {!isReadOnly && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-heading text-base font-semibold">
+            {t("rawMaterials.recordNewPurchase")}
+          </h3>
+          <Card>
+            <CardContent>
+              <PurchaseRecordForm
+                rawMaterial={material}
+                suppliers={activeSuppliers}
+                onCreated={refresh}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </section>
   );
 }

@@ -82,6 +82,25 @@ pub struct ValidatedBackupDto {
     pub created_at: String,
 }
 
+/// Lets the user pick any `.zip` backup file from disk to import — not just one already sitting in
+/// the managed local backups folder (e.g. one copied in from a USB drive, another machine, or an
+/// email attachment). The picked path still has to pass `validate_backup_file`/`restore_backup`'s
+/// own checks before anything is touched.
+#[tauri::command]
+pub async fn choose_backup_file(app: tauri::AppHandle) -> AppResult<Option<String>> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog()
+        .file()
+        .add_filter("Backup archive", &["zip"])
+        .pick_file(move |file| {
+            let _ = tx.send(file);
+        });
+    let picked = rx
+        .recv()
+        .map_err(|e| AppError::new(format!("File picker did not respond: {e}")))?;
+    Ok(picked.map(|p| p.to_string()))
+}
+
 #[tauri::command]
 pub fn validate_backup_file(path: String) -> AppResult<ValidatedBackupDto> {
     let validated = backup::validate_backup_file(&PathBuf::from(path))?;
