@@ -363,6 +363,14 @@ pub fn restore_backup(
         Some("pre-restore-safety"),
     )?;
 
+    // The live connection has to be closed before the file swap below. On Windows, a file opened
+    // without FILE_SHARE_DELETE (SQLite's default) cannot be renamed or deleted by anyone — including
+    // this same process — while a handle to it is still open, so `rename` over `live_db_path` fails
+    // with "Access is denied" if `live_conn` is still holding it. POSIX doesn't have this
+    // restriction (a rename just orphans the old inode), but closing first is correct on every
+    // platform regardless, since there's no reason to hold the file open through a swap on disk.
+    *live_conn = Connection::open_in_memory()?;
+
     let swap_target = live_db_path.with_file_name(format!(
         "{}.restoring",
         live_db_path
