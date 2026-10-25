@@ -1,6 +1,6 @@
 [package]
 name = "pastry-management-desktop"
-version = "1.0.0"
+version = "1.1.0"
 description = "Pastry Management desktop application"
 authors = ["Pastry Management contributors"]
 edition = "2021"
