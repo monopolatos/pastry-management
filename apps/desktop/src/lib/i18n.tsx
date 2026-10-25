@@ -137,6 +137,10 @@ const en = {
     "Restore complete. The app now reflects the restored data — no restart needed.",
   "backup.deleteConfirmTitle": "Delete this backup?",
   "backup.deleteConfirmBody": "This permanently deletes the backup file. This cannot be undone.",
+  "backup.importBackup": "Import backup…",
+  "backup.importConfirmTitle": "Restore from this backup file?",
+  "backup.importConfirmBody":
+    "This file was created by app version {version} on {datetime}. Restoring it replaces all current data with its contents. A safety backup of your current data is taken automatically first, so you can undo this by restoring that one if needed.",
 
   "backup.dropboxTitle": "Dropbox Cloud Backup",
   "backup.dropboxIntro":
@@ -260,7 +264,6 @@ const en = {
   "auth.createOwnerAccount": "Create owner account",
   "auth.creatingAccount": "Creating…",
 
-  "suppliers.title": "Suppliers",
   "suppliers.addSupplier": "Add supplier",
   "suppliers.editSupplier": "Edit supplier",
   "suppliers.contactPerson": "Contact person",
@@ -285,7 +288,6 @@ const en = {
   "units.l": "Liters (l)",
   "units.piece": "Piece",
 
-  "rawMaterials.title": "Raw Materials",
   "rawMaterials.addRawMaterial": "Add raw material",
   "rawMaterials.editRawMaterial": "Edit raw material",
   "rawMaterials.empty": "No raw materials yet.",
@@ -315,6 +317,13 @@ const en = {
   "rawMaterials.defaultSupplier": "Default supplier",
   "rawMaterials.setStartingPrice": "Set a starting price",
   "rawMaterials.setStartingPriceHint": "(optional — you can add this later)",
+  "rawMaterials.recordNewPrice": "Record a new price",
+  "rawMaterials.prefilledFromLast": "Pre-filled from the last entry — adjust as needed.",
+  "rawMaterials.purchasedFrom": "Purchased from",
+  "rawMaterials.exportPdf": "Export PDF",
+  "rawMaterials.pdfTitle": "Raw Materials Report",
+  "rawMaterials.pdfGeneratedAt": "Generated {datetime}",
+  "rawMaterials.exportSuccess": "PDF exported successfully.",
 
   "categories.newCategory": "New category",
   "categories.empty": "No categories yet.",
@@ -325,7 +334,6 @@ const en = {
   "categories.expenseDeleteConfirmBody": "This permanently deletes the category.",
   "categories.incomeDeleteConfirmBody": "This permanently deletes the category.",
   "categories.nameRequired": "Category name is required.",
-  "categories.title": "Categories",
   "categories.materialCategories": "Raw Material Categories",
   "categories.recipeCategories": "Recipe Categories",
 
@@ -342,7 +350,6 @@ const en = {
   "import.skippedInvalid": "Skipped — could not be imported",
   "import.nothingFound": "Nothing found to import in this file.",
 
-  "recipes.title": "Recipes",
   "recipes.addRecipe": "Add recipe",
   "recipes.editRecipe": "Edit recipe",
   "recipes.empty": "No recipes yet.",
@@ -424,7 +431,6 @@ const en = {
   "analytics.noCostSnapshots":
     "No cost snapshots saved yet for this recipe — save one from the recipe's cost breakdown to start tracking its price history.",
 
-  "finance.title": "Finance",
   "finance.amount": "Amount",
   "finance.addExpense": "Add expense",
   "finance.addIncome": "Add income",
@@ -568,6 +574,10 @@ const el: Record<keyof typeof en, string> = {
   "backup.deleteConfirmTitle": "Διαγραφή αυτού του αντιγράφου ασφαλείας;",
   "backup.deleteConfirmBody":
     "Αυτό διαγράφει οριστικά το αρχείο αντιγράφου ασφαλείας. Αυτό δεν μπορεί να αναιρεθεί.",
+  "backup.importBackup": "Εισαγωγή αντιγράφου ασφαλείας…",
+  "backup.importConfirmTitle": "Επαναφορά από αυτό το αρχείο αντιγράφου ασφαλείας;",
+  "backup.importConfirmBody":
+    "Αυτό το αρχείο δημιουργήθηκε από την έκδοση εφαρμογής {version} στις {datetime}. Η επαναφορά του αντικαθιστά όλα τα τρέχοντα δεδομένα με το περιεχόμενό του. Λαμβάνεται αυτόματα πρώτα ένα αντίγραφο ασφαλείας των τρεχόντων δεδομένων σας, ώστε να μπορείτε να αναιρέσετε αυτή την ενέργεια επαναφέροντας εκείνο αν χρειαστεί.",
 
   "backup.dropboxTitle": "Αντίγραφα Ασφαλείας στο Dropbox",
   "backup.dropboxIntro":
@@ -693,7 +703,6 @@ const el: Record<keyof typeof en, string> = {
   "auth.createOwnerAccount": "Δημιουργία λογαριασμού ιδιοκτήτη",
   "auth.creatingAccount": "Δημιουργία…",
 
-  "suppliers.title": "Προμηθευτές",
   "suppliers.addSupplier": "Προσθήκη προμηθευτή",
   "suppliers.editSupplier": "Επεξεργασία προμηθευτή",
   "suppliers.contactPerson": "Υπεύθυνος επικοινωνίας",
@@ -718,7 +727,6 @@ const el: Record<keyof typeof en, string> = {
   "units.l": "Λίτρα (l)",
   "units.piece": "Τεμάχιο",
 
-  "rawMaterials.title": "Πρώτες Ύλες",
   "rawMaterials.addRawMaterial": "Προσθήκη πρώτης ύλης",
   "rawMaterials.editRawMaterial": "Επεξεργασία πρώτης ύλης",
   "rawMaterials.empty": "Δεν υπάρχουν ακόμη πρώτες ύλες.",
@@ -748,6 +756,14 @@ const el: Record<keyof typeof en, string> = {
   "rawMaterials.defaultSupplier": "Προεπιλεγμένος προμηθευτής",
   "rawMaterials.setStartingPrice": "Ορισμός αρχικής τιμής",
   "rawMaterials.setStartingPriceHint": "(προαιρετικό — μπορείτε να το προσθέσετε αργότερα)",
+  "rawMaterials.recordNewPrice": "Καταγραφή νέας τιμής",
+  "rawMaterials.prefilledFromLast":
+    "Προσυμπληρώθηκε από την τελευταία καταχώρηση — προσαρμόστε όπως χρειάζεται.",
+  "rawMaterials.purchasedFrom": "Αγοράστηκε από",
+  "rawMaterials.exportPdf": "Εξαγωγή PDF",
+  "rawMaterials.pdfTitle": "Αναφορά Πρώτων Υλών",
+  "rawMaterials.pdfGeneratedAt": "Δημιουργήθηκε {datetime}",
+  "rawMaterials.exportSuccess": "Το PDF εξήχθη με επιτυχία.",
 
   "categories.newCategory": "Νέα κατηγορία",
   "categories.empty": "Δεν υπάρχουν ακόμη κατηγορίες.",
@@ -758,7 +774,6 @@ const el: Record<keyof typeof en, string> = {
   "categories.expenseDeleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
   "categories.incomeDeleteConfirmBody": "Αυτό διαγράφει οριστικά την κατηγορία.",
   "categories.nameRequired": "Το όνομα κατηγορίας είναι υποχρεωτικό.",
-  "categories.title": "Κατηγορίες",
   "categories.materialCategories": "Κατηγορίες Υλικών",
   "categories.recipeCategories": "Κατηγορίες Συνταγών",
 
@@ -775,7 +790,6 @@ const el: Record<keyof typeof en, string> = {
   "import.skippedInvalid": "Παραλείφθηκαν — δεν ήταν δυνατή η εισαγωγή",
   "import.nothingFound": "Δεν βρέθηκε τίποτα για εισαγωγή σε αυτό το αρχείο.",
 
-  "recipes.title": "Συνταγές",
   "recipes.addRecipe": "Προσθήκη συνταγής",
   "recipes.editRecipe": "Επεξεργασία συνταγής",
   "recipes.empty": "Δεν υπάρχουν ακόμη συνταγές.",
@@ -859,7 +873,6 @@ const el: Record<keyof typeof en, string> = {
   "analytics.noCostSnapshots":
     "Δεν έχουν αποθηκευτεί στιγμιότυπα κόστους για αυτή τη συνταγή ακόμη — αποθηκεύστε ένα από την ανάλυση κόστους της συνταγής για να ξεκινήσει η παρακολούθηση του ιστορικού τιμών.",
 
-  "finance.title": "Οικονομικά",
   "finance.amount": "Ποσό",
   "finance.addExpense": "Προσθήκη εξόδου",
   "finance.addIncome": "Προσθήκη εσόδου",

@@ -1,18 +1,26 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { BASE_UNIT_CODES, UNIT_KINDS, UNIT_LABEL_KEYS } from "../../api/types";
-import type { Category, RawMaterial, RawMaterialInput, Supplier } from "../../api/types";
+import type {
+  Category,
+  PurchaseRecord,
+  RawMaterial,
+  RawMaterialInput,
+  Supplier,
+} from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
 import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 
-/** An optional first purchase to record in the same step as creating the material, so a price can
- * be set immediately instead of requiring a second trip to the material's detail page. */
-export interface InitialPurchaseInput {
+/** An optional purchase/price record to save alongside the material — either its first price when
+ * creating it, or a new price point when editing it (what the raw materials list's "Edit" button
+ * now offers, instead of only being reachable from the material's detail page). */
+export interface PriceUpdateInput {
   supplier_id: number | null;
   purchase_date: string;
   quantity: number;
@@ -24,13 +32,14 @@ interface RawMaterialFormProps {
   initial?: RawMaterial;
   suppliers: Supplier[];
   categories: Category[];
+  /** The material's most recent purchase record, if any — edit mode only, used to pre-fill the
+   * quantity/unit/price fields below so updating a price doesn't mean re-entering everything from
+   * scratch. `undefined` while still loading, `null` once loaded if there's no purchase yet. */
+  lastPurchase?: PurchaseRecord | null;
   /** Creates a new category (used by the inline "+ Add new category" option below) and returns
    * it, so the caller's category list refreshes and this form can select it immediately. */
   onCreateCategory: (name: string) => Promise<Category>;
-  onSubmit: (
-    input: RawMaterialInput,
-    initialPurchase: InitialPurchaseInput | null,
-  ) => Promise<void>;
+  onSubmit: (input: RawMaterialInput, priceUpdate: PriceUpdateInput | null) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -60,11 +69,13 @@ export function RawMaterialForm({
   initial,
   suppliers,
   categories,
+  lastPurchase,
   onCreateCategory,
   onSubmit,
   onCancel,
 }: RawMaterialFormProps) {
   const { t, te } = useI18n();
+  const isCreate = !initial;
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState<string>(
@@ -80,18 +91,28 @@ export function RawMaterialForm({
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
-  // Initial-purchase fields — create mode only (see isCreate below). Left blank, no purchase is
-  // recorded; the material can still be given its first price later from its detail page.
+  // Price-update fields, shared by both modes (see the "Set a starting price"/"Record a new
+  // price" fieldset below). Left blank (or, in edit mode, left unchecked), no purchase record is
+  // created — the material keeps whatever price (or lack of one) it already had. In edit mode,
+  // quantity/unit/price start pre-filled from `lastPurchase` so adjusting a price doesn't mean
+  // re-entering the quantity too — but only take effect once "Record a new price" is checked, so
+  // just editing the material's other fields and saving never silently logs a duplicate purchase.
+  const [recordNewPrice, setRecordNewPrice] = useState(isCreate);
   const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(today());
-  const [purchaseQuantity, setPurchaseQuantity] = useState("");
-  const [purchaseUnitCode, setPurchaseUnitCode] = useState<string>(baseUnitCode);
-  const [purchaseTotalPrice, setPurchaseTotalPrice] = useState("");
+  const [purchaseQuantity, setPurchaseQuantity] = useState(
+    lastPurchase ? String(lastPurchase.quantity) : "",
+  );
+  const [purchaseUnitCode, setPurchaseUnitCode] = useState<string>(
+    lastPurchase?.purchase_unit_code ?? baseUnitCode,
+  );
+  const [purchaseTotalPrice, setPurchaseTotalPrice] = useState(
+    lastPurchase ? (lastPurchase.total_price_micros / 1_000_000).toFixed(2) : "",
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const formError = useFormError();
 
-  const isCreate = !initial;
   const materialKind = UNIT_KINDS[baseUnitCode as (typeof BASE_UNIT_CODES)[number]];
   const compatiblePurchaseUnits = materialKind
     ? BASE_UNIT_CODES.filter((code) => UNIT_KINDS[code] === materialKind)
@@ -140,9 +161,10 @@ export function RawMaterialForm({
       return;
     }
 
-    const wantsInitialPurchase = purchaseQuantity.trim() !== "" || purchaseTotalPrice.trim() !== "";
-    let initialPurchase: InitialPurchaseInput | null = null;
-    if (isCreate && wantsInitialPurchase) {
+    const wantsPriceUpdate =
+      recordNewPrice && (purchaseQuantity.trim() !== "" || purchaseTotalPrice.trim() !== "");
+    let priceUpdate: PriceUpdateInput | null = null;
+    if (wantsPriceUpdate) {
       const quantityNumber = parseFloat(purchaseQuantity);
       if (!Number.isFinite(quantityNumber) || quantityNumber <= 0) {
         formError.handle(
@@ -162,7 +184,7 @@ export function RawMaterialForm({
         );
         return;
       }
-      initialPurchase = {
+      priceUpdate = {
         supplier_id: purchaseSupplierId === "" ? null : Number(purchaseSupplierId),
         purchase_date: purchaseDate,
         quantity: quantityNumber,
@@ -184,7 +206,7 @@ export function RawMaterialForm({
           pricing_strategy_config: initial?.pricing_strategy_config ?? null,
           notes: emptyToNull(notes),
         },
-        initialPurchase,
+        priceUpdate,
       );
     } catch (err) {
       formError.handle(err, KNOWN_FIELDS);
@@ -327,101 +349,128 @@ export function RawMaterialForm({
         <Textarea id="material-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
-      {isCreate && (
-        <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
+      <fieldset className="flex flex-col gap-3 rounded-lg border p-4">
+        {isCreate ? (
           <legend className="px-1 text-sm font-semibold">
             {t("rawMaterials.setStartingPrice")}{" "}
             <span className="font-normal text-muted-foreground">
               {t("rawMaterials.setStartingPriceHint")}
             </span>
           </legend>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-supplier">
-              {t("common.supplier")}{" "}
-              <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
+        ) : (
+          <legend className="px-1 text-sm font-semibold">
+            <Label className="font-semibold">
+              <Checkbox
+                checked={recordNewPrice}
+                onCheckedChange={(checked) => setRecordNewPrice(checked === true)}
+              />
+              {t("rawMaterials.recordNewPrice")}
             </Label>
-            <Select
-              value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
-              onValueChange={(value) => setPurchaseSupplierId(value === NONE_VALUE ? "" : value)}
-            >
-              <SelectTrigger id="material-purchase-supplier" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={String(supplier.id)}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          </legend>
+        )}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-date">{t("purchaseRecord.purchaseDate")}</Label>
-            <Input
-              id="material-purchase-date"
-              type="date"
-              value={purchaseDate}
-              onChange={(e) => setPurchaseDate(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-quantity">{t("common.quantity")}</Label>
-            <Input
-              id="material-purchase-quantity"
-              type="number"
-              step="any"
-              min="0"
-              value={purchaseQuantity}
-              onChange={(e) => setPurchaseQuantity(e.target.value)}
-            />
-            {formError.fieldError("purchase_quantity") && (
-              <p className="text-sm text-destructive">
-                {formError.fieldError("purchase_quantity")}
-              </p>
+        {(isCreate || recordNewPrice) && (
+          <>
+            {!isCreate && lastPurchase && (
+              <p className="text-xs text-muted-foreground">{t("rawMaterials.prefilledFromLast")}</p>
             )}
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-unit">{t("purchaseRecord.purchaseUnit")}</Label>
-            <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
-              <SelectTrigger id="material-purchase-unit" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {compatiblePurchaseUnits.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {t(UNIT_LABEL_KEYS[code])}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-purchase-supplier">
+                {t("rawMaterials.purchasedFrom")}{" "}
+                <span className="font-normal text-muted-foreground">{t("common.optional")}</span>
+              </Label>
+              <Select
+                value={purchaseSupplierId === "" ? NONE_VALUE : purchaseSupplierId}
+                onValueChange={(value) => {
+                  const next = value === NONE_VALUE ? "" : value;
+                  setPurchaseSupplierId(next);
+                  // If no default supplier is set yet, assume this is also the material's default
+                  // supplier going forward — without this, picking a supplier only here (and not in
+                  // "Default supplier" above) silently leaves the material's own supplier unset.
+                  if (next !== "" && defaultSupplierId === "") {
+                    setDefaultSupplierId(next);
+                  }
+                }}
+              >
+                <SelectTrigger id="material-purchase-supplier" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem key={supplier.id} value={String(supplier.id)}>
+                      {supplier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-purchase-total-price">
-              {t("purchaseRecord.totalPricePaid")}
-            </Label>
-            <Input
-              id="material-purchase-total-price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={purchaseTotalPrice}
-              onChange={(e) => setPurchaseTotalPrice(e.target.value)}
-            />
-            {formError.fieldError("purchase_total_price") && (
-              <p className="text-sm text-destructive">
-                {formError.fieldError("purchase_total_price")}
-              </p>
-            )}
-          </div>
-        </fieldset>
-      )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-purchase-date">{t("purchaseRecord.purchaseDate")}</Label>
+              <Input
+                id="material-purchase-date"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-purchase-quantity">{t("common.quantity")}</Label>
+              <Input
+                id="material-purchase-quantity"
+                type="number"
+                step="any"
+                min="0"
+                value={purchaseQuantity}
+                onChange={(e) => setPurchaseQuantity(e.target.value)}
+              />
+              {formError.fieldError("purchase_quantity") && (
+                <p className="text-sm text-destructive">
+                  {formError.fieldError("purchase_quantity")}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-purchase-unit">{t("purchaseRecord.purchaseUnit")}</Label>
+              <Select value={purchaseUnitCode} onValueChange={setPurchaseUnitCode}>
+                <SelectTrigger id="material-purchase-unit" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {compatiblePurchaseUnits.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {t(UNIT_LABEL_KEYS[code])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-purchase-total-price">
+                {t("purchaseRecord.totalPricePaid")}
+              </Label>
+              <Input
+                id="material-purchase-total-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={purchaseTotalPrice}
+                onChange={(e) => setPurchaseTotalPrice(e.target.value)}
+              />
+              {formError.fieldError("purchase_total_price") && (
+                <p className="text-sm text-destructive">
+                  {formError.fieldError("purchase_total_price")}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </fieldset>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={submitting}>

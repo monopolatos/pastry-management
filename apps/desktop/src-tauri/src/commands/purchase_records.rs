@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::auth::SessionState;
+use crate::auth::{self, SessionState};
 use crate::db::repositories::purchase_records::{
     self, PurchaseRecord, PurchaseRecordInput, RecentPurchaseRecord,
 };
@@ -22,6 +22,7 @@ pub fn create_purchase_record(
     session: State<SessionState>,
     input: PurchaseRecordInput,
 ) -> AppResult<PurchaseRecord> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     let created_by_user_id = session
         .0

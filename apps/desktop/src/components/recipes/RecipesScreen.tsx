@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { calculateRecipeCost } from "@pastry-management/core";
 import type { CostingRawMaterial } from "@pastry-management/core";
 import { listMeasurementUnits } from "../../api/measurementUnits";
@@ -16,6 +17,7 @@ import type {
 } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
 import { compareNullable } from "../../lib/sorting";
+import { useSession } from "../../lib/session";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeForm } from "./RecipeForm";
 import {
@@ -57,6 +59,7 @@ export function RecipesScreen({
   onAutoOpenCreateHandled,
 }: RecipesScreenProps = {}) {
   const { t, te } = useI18n();
+  const { isReadOnly } = useSession();
 
   function unitLabel(units: MeasurementUnit[], code: string): string {
     const unit = units.find((u) => u.code === code);
@@ -298,14 +301,14 @@ export function RecipesScreen({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-heading text-xl font-semibold">{t("recipes.title")}</h2>
-        <div className="flex items-center gap-4">
-          <Button type="button" onClick={() => setPanel({ mode: "create" })}>
+      {!isReadOnly && (
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          <Button type="button" className="gap-1.5" onClick={() => setPanel({ mode: "create" })}>
+            <Plus className="size-4" />
             {t("recipes.addRecipe")}
           </Button>
         </div>
-      </div>
+      )}
 
       <ListToolbar
         searchValue={search}
@@ -378,7 +381,7 @@ export function RecipesScreen({
                 <TableHead>{t("recipes.yield")}</TableHead>
                 <TableHead>{t("recipes.calculatedPrice")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("common.actions")}</TableHead>
+                {!isReadOnly && <TableHead>{t("common.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -412,62 +415,65 @@ export function RecipesScreen({
                         {recipe.status === "active" ? t("common.active") : t("common.archived")}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEdit(recipe.id)}
-                        >
-                          {t("common.edit")}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleArchiveToggle(recipe)}
-                        >
-                          {recipe.status === "active"
-                            ? t("common.archive")
-                            : t("common.reactivate")}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDuplicate(recipe.id)}
-                        >
-                          {t("recipes.duplicate")}
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button type="button" variant="destructive" size="sm">
-                              {t("common.delete")}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                {t("common.deleteConfirmTitle").replace("{name}", recipe.name)}
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {t("recipes.deleteConfirmBody")} {t("common.deleteCannotBeUndone")}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                              <AlertDialogAction
-                                variant="destructive"
-                                onClick={() => handleDelete(recipe.id)}
-                              >
+                    {!isReadOnly && (
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(recipe.id)}
+                          >
+                            {t("common.edit")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleArchiveToggle(recipe)}
+                          >
+                            {recipe.status === "active"
+                              ? t("common.archive")
+                              : t("common.reactivate")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDuplicate(recipe.id)}
+                          >
+                            {t("recipes.duplicate")}
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button type="button" variant="destructive" size="sm">
                                 {t("common.delete")}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  {t("common.deleteConfirmTitle").replace("{name}", recipe.name)}
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {t("recipes.deleteConfirmBody")}{" "}
+                                  {t("common.deleteCannotBeUndone")}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                                <AlertDialogAction
+                                  variant="destructive"
+                                  onClick={() => handleDelete(recipe.id)}
+                                >
+                                  {t("common.delete")}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}

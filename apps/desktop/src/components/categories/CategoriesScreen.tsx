@@ -6,6 +6,7 @@ import * as incomeCategoriesApi from "../../api/incomeCategories";
 import * as recipeCategoriesApi from "../../api/recipeCategories";
 import type { Category } from "../../api/types";
 import { useI18n } from "../../lib/i18n";
+import { useSession } from "../../lib/session";
 import { CategoryManager } from "./CategoryManager";
 
 /**
@@ -17,6 +18,7 @@ import { CategoryManager } from "./CategoryManager";
  */
 export function CategoriesScreen() {
   const { t, te } = useI18n();
+  const { isReadOnly, canSeeFinance } = useSession();
   const [materialCategories, setMaterialCategories] = useState<Category[]>([]);
   const [recipeCategories, setRecipeCategories] = useState<Category[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<Category[]>([]);
@@ -27,11 +29,14 @@ export function CategoriesScreen() {
   const refresh = useCallback(() => {
     setLoading(true);
     setLoadError(null);
+    // Finance categories are off-limits to an employee session — the backend rejects them
+    // outright, and fetching them here would fail the whole `Promise.all`, hiding even the
+    // material/recipe categories the employee IS allowed to see.
     Promise.all([
       categoriesApi.listCategories(true),
       recipeCategoriesApi.listRecipeCategories(true),
-      expenseCategoriesApi.listExpenseCategories(true),
-      incomeCategoriesApi.listIncomeCategories(true),
+      canSeeFinance ? expenseCategoriesApi.listExpenseCategories(true) : Promise.resolve([]),
+      canSeeFinance ? incomeCategoriesApi.listIncomeCategories(true) : Promise.resolve([]),
     ])
       .then(([materials, recipes, expenses, income]) => {
         setMaterialCategories(materials);
@@ -41,7 +46,7 @@ export function CategoriesScreen() {
       })
       .catch((err) => setLoadError(te(err)))
       .finally(() => setLoading(false));
-  }, [te]);
+  }, [te, canSeeFinance]);
 
   useEffect(() => {
     refresh();
@@ -49,8 +54,6 @@ export function CategoriesScreen() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-heading text-xl font-semibold">{t("categories.title")}</h2>
-
       {loadError && <p className="text-sm font-medium text-destructive">{loadError}</p>}
 
       {loading ? (
@@ -63,6 +66,7 @@ export function CategoriesScreen() {
             categories={materialCategories}
             deleteConfirmBody={t("categories.deleteConfirmBody")}
             onChanged={refresh}
+            readOnly={isReadOnly}
             api={{
               create: categoriesApi.createCategory,
               update: categoriesApi.updateCategory,
@@ -77,6 +81,7 @@ export function CategoriesScreen() {
             categories={recipeCategories}
             deleteConfirmBody={t("categories.recipeDeleteConfirmBody")}
             onChanged={refresh}
+            readOnly={isReadOnly}
             api={{
               create: recipeCategoriesApi.createRecipeCategory,
               update: recipeCategoriesApi.updateRecipeCategory,
@@ -85,34 +90,38 @@ export function CategoriesScreen() {
               delete: recipeCategoriesApi.deleteRecipeCategory,
             }}
           />
-          <CategoryManager
-            title={t("categories.expenseCategories")}
-            icon={TrendingDown}
-            categories={expenseCategories}
-            deleteConfirmBody={t("categories.expenseDeleteConfirmBody")}
-            onChanged={refresh}
-            api={{
-              create: expenseCategoriesApi.createExpenseCategory,
-              update: expenseCategoriesApi.updateExpenseCategory,
-              archive: expenseCategoriesApi.archiveExpenseCategory,
-              reactivate: expenseCategoriesApi.reactivateExpenseCategory,
-              delete: expenseCategoriesApi.deleteExpenseCategory,
-            }}
-          />
-          <CategoryManager
-            title={t("categories.incomeCategories")}
-            icon={TrendingUp}
-            categories={incomeCategories}
-            deleteConfirmBody={t("categories.incomeDeleteConfirmBody")}
-            onChanged={refresh}
-            api={{
-              create: incomeCategoriesApi.createIncomeCategory,
-              update: incomeCategoriesApi.updateIncomeCategory,
-              archive: incomeCategoriesApi.archiveIncomeCategory,
-              reactivate: incomeCategoriesApi.reactivateIncomeCategory,
-              delete: incomeCategoriesApi.deleteIncomeCategory,
-            }}
-          />
+          {canSeeFinance && (
+            <CategoryManager
+              title={t("categories.expenseCategories")}
+              icon={TrendingDown}
+              categories={expenseCategories}
+              deleteConfirmBody={t("categories.expenseDeleteConfirmBody")}
+              onChanged={refresh}
+              api={{
+                create: expenseCategoriesApi.createExpenseCategory,
+                update: expenseCategoriesApi.updateExpenseCategory,
+                archive: expenseCategoriesApi.archiveExpenseCategory,
+                reactivate: expenseCategoriesApi.reactivateExpenseCategory,
+                delete: expenseCategoriesApi.deleteExpenseCategory,
+              }}
+            />
+          )}
+          {canSeeFinance && (
+            <CategoryManager
+              title={t("categories.incomeCategories")}
+              icon={TrendingUp}
+              categories={incomeCategories}
+              deleteConfirmBody={t("categories.incomeDeleteConfirmBody")}
+              onChanged={refresh}
+              api={{
+                create: incomeCategoriesApi.createIncomeCategory,
+                update: incomeCategoriesApi.updateIncomeCategory,
+                archive: incomeCategoriesApi.archiveIncomeCategory,
+                reactivate: incomeCategoriesApi.reactivateIncomeCategory,
+                delete: incomeCategoriesApi.deleteIncomeCategory,
+              }}
+            />
+          )}
         </div>
       )}
     </section>

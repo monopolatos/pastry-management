@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { DatabaseBackup } from "lucide-react";
+import { DatabaseBackup, Upload } from "lucide-react";
 import { toast } from "sonner";
 import * as backupApi from "../../api/backup";
-import type { AutoBackupFrequency, BackupInfo, BackupSettings } from "../../api/types";
+import type {
+  AutoBackupFrequency,
+  BackupInfo,
+  BackupSettings,
+  ValidatedBackup,
+} from "../../api/types";
 import { useFormError } from "../../hooks/useFormError";
 import { useI18n } from "../../lib/i18n";
 import {
@@ -51,6 +56,11 @@ export function BackupScreen() {
   const [rowError, setRowError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importCandidate, setImportCandidate] = useState<{
+    path: string;
+    info: ValidatedBackup;
+  } | null>(null);
 
   const applySettings = useCallback((s: BackupSettings) => {
     setSettings(s);
@@ -187,6 +197,36 @@ export function BackupScreen() {
     }
   }
 
+  async function handleChooseImportFile() {
+    setImporting(true);
+    try {
+      const path = await backupApi.chooseBackupFile();
+      if (path === null) return;
+      const info = await backupApi.validateBackupFile(path);
+      setImportCandidate({ path, info });
+    } catch (err) {
+      toast.error(te(err));
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleConfirmImport() {
+    if (!importCandidate) return;
+    const { path } = importCandidate;
+    setBusyPath(path);
+    try {
+      await backupApi.restoreBackup(path);
+      toast.success(t("backup.restoreSuccess"));
+      setImportCandidate(null);
+      refreshBackups();
+    } catch (err) {
+      toast.error(te(err));
+    } finally {
+      setBusyPath(null);
+    }
+  }
+
   async function handleDelete(backup: BackupInfo) {
     setRowError(null);
     setBusyPath(backup.path);
@@ -308,9 +348,21 @@ export function BackupScreen() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>{t("backup.backupsTitle")}</CardTitle>
-          <Button type="button" onClick={handleCreateBackup} disabled={creating}>
-            {creating ? t("common.loading") : t("backup.createNow")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleChooseImportFile}
+              disabled={importing}
+            >
+              <Upload className="size-4" />
+              {importing ? t("common.loading") : t("backup.importBackup")}
+            </Button>
+            <Button type="button" onClick={handleCreateBackup} disabled={creating}>
+              {creating ? t("common.loading") : t("backup.createNow")}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {rowError && <p className="text-sm font-medium text-destructive">{rowError}</p>}
@@ -429,6 +481,31 @@ export function BackupScreen() {
       </Card>
 
       <DropboxSection localBackups={backups} onLocalBackupCreated={refreshBackups} />
+
+      <AlertDialog
+        open={importCandidate !== null}
+        onOpenChange={(open) => {
+          if (!open) setImportCandidate(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("backup.importConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {importCandidate &&
+                t("backup.importConfirmBody")
+                  .replace("{version}", importCandidate.info.app_version)
+                  .replace("{datetime}", formatDateTime(importCandidate.info.created_at))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmImport}>
+              {t("backup.importBackup")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

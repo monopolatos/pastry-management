@@ -4,6 +4,7 @@ pub mod categories;
 pub mod cloud_backup;
 pub mod expense_categories;
 pub mod expenses;
+pub mod export;
 pub mod import;
 pub mod income_categories;
 pub mod income_entries;

@@ -99,7 +99,7 @@ export function ThemeEditorCard() {
                 type="color"
                 value={colors[role] ?? FALLBACK_SWATCH[role]}
                 onChange={(e) => handleChange(role, e.target.value)}
-                className="h-10 w-16 cursor-pointer rounded-md border border-input p-1"
+                className="h-10 w-16 cursor-pointer rounded-lg border border-input p-1"
               />
             </div>
           ))}

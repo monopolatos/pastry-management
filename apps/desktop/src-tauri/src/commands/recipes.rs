@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::auth::SessionState;
+use crate::auth::{self, SessionState};
 use crate::db::repositories::recipes::{
     self, CostSnapshotSummary, CostingRawMaterial, RecipeCostingGraph, RecipeDetail, RecipeInput,
     RecipeSummary,
@@ -35,6 +35,7 @@ pub fn create_recipe(
     session: State<SessionState>,
     input: RecipeInput,
 ) -> AppResult<RecipeDetail> {
+    auth::require_write_access(&session)?;
     let user_id = current_user_id(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::create(&conn, input, user_id)
@@ -47,25 +48,33 @@ pub fn update_recipe(
     id: i64,
     input: RecipeInput,
 ) -> AppResult<RecipeDetail> {
+    auth::require_write_access(&session)?;
     let user_id = current_user_id(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::update(&conn, id, input, user_id)
 }
 
 #[tauri::command]
-pub fn archive_recipe(db: State<DbState>, id: i64) -> AppResult<()> {
+pub fn archive_recipe(db: State<DbState>, session: State<SessionState>, id: i64) -> AppResult<()> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::set_active(&conn, id, false)
 }
 
 #[tauri::command]
-pub fn reactivate_recipe(db: State<DbState>, id: i64) -> AppResult<()> {
+pub fn reactivate_recipe(
+    db: State<DbState>,
+    session: State<SessionState>,
+    id: i64,
+) -> AppResult<()> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::set_active(&conn, id, true)
 }
 
 #[tauri::command]
-pub fn delete_recipe(db: State<DbState>, id: i64) -> AppResult<()> {
+pub fn delete_recipe(db: State<DbState>, session: State<SessionState>, id: i64) -> AppResult<()> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::delete(&conn, id)
 }
@@ -73,9 +82,11 @@ pub fn delete_recipe(db: State<DbState>, id: i64) -> AppResult<()> {
 #[tauri::command]
 pub fn duplicate_recipe(
     db: State<DbState>,
+    session: State<SessionState>,
     id: i64,
     new_name: Option<String>,
 ) -> AppResult<RecipeDetail> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::duplicate(&conn, id, new_name)
 }
@@ -95,12 +106,14 @@ pub fn list_raw_material_costing(db: State<DbState>) -> AppResult<Vec<CostingRaw
 #[tauri::command]
 pub fn save_recipe_cost_snapshot(
     db: State<DbState>,
+    session: State<SessionState>,
     recipe_id: i64,
     pricing_strategy_summary: String,
     total_cost_micros: i64,
     cost_per_yield_unit_micros: i64,
     breakdown_json: String,
 ) -> AppResult<i64> {
+    auth::require_write_access(&session)?;
     let conn = db.0.lock().map_err(|e| AppError::new(e.to_string()))?;
     recipes::save_cost_snapshot(
         &conn,

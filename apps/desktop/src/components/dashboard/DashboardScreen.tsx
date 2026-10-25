@@ -19,6 +19,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
 import { useI18n } from "../../lib/i18n";
+import { useSession } from "../../lib/session";
 
 interface Counts {
   rawMaterials: number;
@@ -49,6 +50,7 @@ function formatDate(iso: string): string {
  */
 export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScreenProps) {
   const { t, te } = useI18n();
+  const { canSeeBackup } = useSession();
   const [counts, setCounts] = useState<Counts | null>(null);
   const [recentRecipes, setRecentRecipes] = useState<RecipeSummary[]>([]);
   const [recentPurchases, setRecentPurchases] = useState<RecentPurchaseRecord[]>([]);
@@ -66,8 +68,11 @@ export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScre
       listRecipes(false),
       listSuppliers(false),
       listRecentPurchaseRecords(8),
-      getBackupSettings(),
-      getDropboxSettings(),
+      // Backup is off-limits to an employee session — the backend rejects these outright, and
+      // fetching them here would fail the whole `Promise.all`, breaking the rest of the overview
+      // for no reason.
+      canSeeBackup ? getBackupSettings() : Promise.resolve(null),
+      canSeeBackup ? getDropboxSettings() : Promise.resolve(null),
     ])
       .then(([materials, recipes, suppliers, purchases, backup, dropbox]) => {
         if (cancelled) return;
@@ -93,7 +98,7 @@ export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScre
     return () => {
       cancelled = true;
     };
-  }, [te]);
+  }, [te, canSeeBackup]);
 
   function frequencyLabel(frequency: AutoBackupFrequency | null): string {
     if (frequency === "daily") return t("backup.frequencyDaily");
@@ -251,64 +256,66 @@ export function DashboardScreen({ onAddRawMaterial, onAddRecipe }: DashboardScre
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DatabaseBackup className="size-4" />
-            {t("dashboard.backupStatus")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-5 w-2/3" />
-          ) : !backupConfigured ? (
-            <p className="text-sm text-muted-foreground">{t("dashboard.backupNotConfigured")}</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {localAutoBackupOn && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <HardDrive className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{t("dashboard.localBackup")}</span>
-                      <Badge variant="success">
-                        {frequencyLabel(backupSettings?.auto_backup_frequency ?? null)}
-                      </Badge>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {backupSettings?.last_auto_backup_at
-                        ? t("dashboard.lastBackupAt").replace(
-                            "{datetime}",
-                            formatDateTime(backupSettings.last_auto_backup_at),
-                          )
-                        : t("dashboard.noBackupRunYet")}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {dropboxConnected && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Cloud className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{t("dashboard.dropboxConnected")}</span>
-                      {dropboxAutoBackupOn && (
+      {canSeeBackup && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DatabaseBackup className="size-4" />
+              {t("dashboard.backupStatus")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-5 w-2/3" />
+            ) : !backupConfigured ? (
+              <p className="text-sm text-muted-foreground">{t("dashboard.backupNotConfigured")}</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {localAutoBackupOn && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <HardDrive className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{t("dashboard.localBackup")}</span>
                         <Badge variant="success">
-                          {frequencyLabel(dropboxStatus?.settings.auto_backup_frequency ?? null)}
+                          {frequencyLabel(backupSettings?.auto_backup_frequency ?? null)}
                         </Badge>
-                      )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {backupSettings?.last_auto_backup_at
+                          ? t("dashboard.lastBackupAt").replace(
+                              "{datetime}",
+                              formatDateTime(backupSettings.last_auto_backup_at),
+                            )
+                          : t("dashboard.noBackupRunYet")}
+                      </p>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                )}
+                {dropboxConnected && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Cloud className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{t("dashboard.dropboxConnected")}</span>
+                        {dropboxAutoBackupOn && (
+                          <Badge variant="success">
+                            {frequencyLabel(dropboxStatus?.settings.auto_backup_frequency ?? null)}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }

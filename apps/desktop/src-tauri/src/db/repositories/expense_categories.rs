@@ -95,7 +95,9 @@ pub fn update(
         )
         .map_err(|e| map_unique_violation(e, name))?;
     if affected == 0 {
-        return Err(AppError::new(format!("Expense category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Expense category {id} was not found."
+        )));
     }
     get(conn, id)
 }
@@ -106,7 +108,9 @@ pub fn set_active(conn: &Connection, id: i64, active: bool) -> AppResult<()> {
         params![active as i64, id],
     )?;
     if affected == 0 {
-        return Err(AppError::new(format!("Expense category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Expense category {id} was not found."
+        )));
     }
     Ok(())
 }
@@ -126,7 +130,9 @@ pub fn delete(conn: &Connection, id: i64) -> AppResult<()> {
     }
     let affected = conn.execute("DELETE FROM expense_categories WHERE id = ?1", [id])?;
     if affected == 0 {
-        return Err(AppError::new(format!("Expense category {id} was not found.")));
+        return Err(AppError::new(format!(
+            "Expense category {id} was not found."
+        )));
     }
     Ok(())
 }
