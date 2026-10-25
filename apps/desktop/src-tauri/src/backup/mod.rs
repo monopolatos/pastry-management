@@ -370,13 +370,15 @@ pub fn validate_backup_file(path: &Path) -> Result<ValidatedBackup, BackupError>
 /// 3. Stage the backup's database in a temp directory and bring it up to the current schema
 ///    (never in place).
 /// 4. Take an automatic safety backup of the CURRENT live database, labeled `pre-restore-safety`.
-/// 5. Atomically swap the staged, validated, up-to-date database in for the live one.
+/// 5. Overwrite the live database file's content with the staged, validated, up-to-date database
+///    (see the comment at the write itself for why this isn't a create-temp-file-then-rename swap).
 /// 6. Reopen the live connection against the restored file so the running app sees the restored
 ///    data immediately, without requiring a restart.
 ///
 /// `live_conn` is replaced in place with a fresh connection on return either way: to the restored
-/// database on success, or back to the original, unmodified one if step 5 failed (a failed rename
-/// never partially applies — the live database file itself is always left exactly as it was).
+/// database on success, or reopened against whatever is on disk if step 5 failed or was
+/// interrupted partway — which, unlike a failed rename, is not guaranteed to still be the original
+/// data (the step 4 safety backup is the recovery path in that case, not this function).
 pub fn restore_backup(
     backup_path: &Path,
     live_db_path: &Path,
@@ -410,26 +412,27 @@ pub fn restore_backup(
     // platform regardless, since there's no reason to hold the file open through a swap on disk.
     *live_conn = Connection::open_in_memory()?;
 
-    let swap_target = live_db_path.with_file_name(format!(
-        "{}.restoring",
-        live_db_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-    ));
-    // Closing our own handle above is necessary but not always sufficient on Windows — real-time
-    // antivirus scanning or search indexing routinely grabs a brief exclusive lock on a file right
-    // after it's written, which surfaces as the same "Access is denied" for an instant. These few
-    // retries are cheap and absorb exactly that; they do nothing if the first attempt just works.
-    let swap_result = (|| -> Result<(), BackupError> {
-        retry_transient_io(|| std::fs::copy(&staged_db, &swap_target))
-            .map_err(|e| BackupError::Io(annotate_path(e, &swap_target)))?;
-        retry_transient_io(|| std::fs::File::open(&swap_target)?.sync_all())
-            .map_err(|e| BackupError::Io(annotate_path(e, &swap_target)))?;
-        retry_transient_io(|| std::fs::rename(&swap_target, live_db_path))
-            .map_err(|e| BackupError::Io(annotate_path(e, live_db_path)))?;
-        Ok(())
-    })();
+    // Overwrite the live database file's own content in place, rather than writing a separate
+    // ".restoring" file alongside it first and renaming that into place. Write-then-rename is
+    // normally the safer pattern (a crash mid-write could otherwise leave a half-written live
+    // file), but on at least one real Windows machine, the very first step of that — creating a
+    // brand new file in this directory — fails with "Access is denied", even though the live
+    // database file itself is written to on every normal use of the app without issue. Whatever
+    // that account's folder permissions or antivirus/Controlled Folder Access is actually doing,
+    // it evidently distinguishes "create a new file here" from "modify a file that's already
+    // here" — so this sidesteps the distinction entirely by never creating a new file. The
+    // automatic pre-restore safety backup taken just above is the fallback if this write is ever
+    // interrupted (e.g. a crash or power loss mid-copy).
+    let swap_result = retry_transient_io(|| -> std::io::Result<()> {
+        let mut dest = std::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(live_db_path)?;
+        let mut src = std::fs::File::open(&staged_db)?;
+        std::io::copy(&mut src, &mut dest)?;
+        dest.sync_all()
+    })
+    .map_err(|e| BackupError::Io(annotate_path(e, live_db_path)));
 
     // Sidecar WAL/SHM files from the just-replaced database no longer apply — only relevant if the
     // swap above actually replaced the file.
@@ -446,12 +449,13 @@ pub fn restore_backup(
 
     let _ = std::fs::remove_dir_all(&staging_dir);
 
-    // Reopen live_db_path no matter what happened above. On success this is the newly restored
-    // database; on failure, live_db_path was never actually modified — `rename` either fully
-    // replaces the destination or doesn't touch it at all — so this reopens the original, unchanged
-    // data. Without this, a failed swap would leave `live_conn` pointing at the empty, unmigrated
-    // throwaway database opened above, breaking every feature in the app with "no such table"
-    // errors for the rest of the session even though nothing was actually lost on disk.
+    // Reopen live_db_path no matter what happened above — whatever is actually on disk now,
+    // restored or not. Without this, a failed overwrite would leave `live_conn` pointing at the
+    // empty, unmigrated throwaway database opened above, breaking every feature in the app with
+    // "no such table" errors for the rest of the session on top of whatever the write failure
+    // itself did. If the overwrite above failed partway through, the live database file may now be
+    // genuinely incomplete — that's what the step 4 safety backup exists to recover from, not this
+    // reopen.
     *live_conn = crate::db::open_and_migrate(live_db_path)?;
     swap_result?;
 
