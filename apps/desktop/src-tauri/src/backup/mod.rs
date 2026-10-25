@@ -115,6 +115,38 @@ fn unique_backup_path(dest_dir: &Path, prefix: &str, created_at_iso: &str) -> Pa
     candidate
 }
 
+/// Retries a fallible filesystem operation a few times with a short, increasing delay. Windows
+/// antivirus and search-indexing services routinely grab a brief exclusive lock on a file right
+/// after it's written or right before it's renamed/deleted, which surfaces as a transient "Access
+/// is denied" that clears on its own within a few hundred milliseconds. A handful of retries
+/// absorbs that; it costs nothing when the first attempt just succeeds, which is every time on
+/// Linux/macOS and the overwhelming majority of the time on Windows too.
+fn retry_transient_io<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+    const ATTEMPTS: u32 = 5;
+    let mut last_err = None;
+    for attempt in 0..ATTEMPTS {
+        match op() {
+            Ok(value) => return Ok(value),
+            Err(e) => {
+                last_err = Some(e);
+                if attempt + 1 < ATTEMPTS {
+                    std::thread::sleep(std::time::Duration::from_millis(
+                        150 * u64::from(attempt + 1),
+                    ));
+                }
+            }
+        }
+    }
+    Err(last_err.expect("loop runs at least once"))
+}
+
+/// Rewraps an [`std::io::Error`] with `path` folded into its message — the bare OS message alone
+/// (e.g. "Access is denied. (os error 5)") doesn't say which of several files in this module was
+/// involved, which makes a report of this error impossible to act on.
+fn annotate_path(err: std::io::Error, path: &Path) -> std::io::Error {
+    std::io::Error::new(err.kind(), format!("{} ({})", err, path.display()))
+}
+
 fn write_zip(dest: &Path, db_path: &Path, manifest: &BackupManifest) -> Result<(), BackupError> {
     // Write to a temp file in the same directory first, then rename into place, so a backup file
     // never appears at its final name until it's fully and successfully written.
@@ -124,7 +156,8 @@ fn write_zip(dest: &Path, db_path: &Path, manifest: &BackupManifest) -> Result<(
     ));
 
     {
-        let file = std::fs::File::create(&tmp_path)?;
+        let file = std::fs::File::create(&tmp_path)
+            .map_err(|e| BackupError::Io(annotate_path(e, &tmp_path)))?;
         let mut zip = zip::ZipWriter::new(file);
         let options: zip::write::FileOptions<'_, ()> =
             zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
@@ -143,7 +176,12 @@ fn write_zip(dest: &Path, db_path: &Path, manifest: &BackupManifest) -> Result<(
             .map_err(|e| BackupError::InvalidZip(e.to_string()))?;
     }
 
-    std::fs::rename(&tmp_path, dest)?;
+    // Same class of transient Windows lock as the restore swap (see retry_transient_io) — a backup
+    // archive renamed into its final name right after being fully written hits exactly the same
+    // momentary antivirus/indexing lock, and this rename runs on every single backup, scheduled or
+    // manual, not just during a restore.
+    retry_transient_io(|| std::fs::rename(&tmp_path, dest))
+        .map_err(|e| BackupError::Io(annotate_path(e, dest)))?;
     Ok(())
 }
 
@@ -324,38 +362,6 @@ pub fn validate_backup_file(path: &Path) -> Result<ValidatedBackup, BackupError>
         schema_version: manifest.schema_version,
         created_at: manifest.created_at,
     })
-}
-
-/// Retries a fallible filesystem operation a few times with a short, increasing delay. Windows
-/// antivirus and search-indexing services routinely grab a brief exclusive lock on a file right
-/// after it's written or right before it's renamed/deleted, which surfaces as a transient "Access
-/// is denied" that clears on its own within a few hundred milliseconds. A handful of retries
-/// absorbs that; it costs nothing when the first attempt just succeeds, which is every time on
-/// Linux/macOS and the overwhelming majority of the time on Windows too.
-fn retry_transient_io<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
-    const ATTEMPTS: u32 = 5;
-    let mut last_err = None;
-    for attempt in 0..ATTEMPTS {
-        match op() {
-            Ok(value) => return Ok(value),
-            Err(e) => {
-                last_err = Some(e);
-                if attempt + 1 < ATTEMPTS {
-                    std::thread::sleep(std::time::Duration::from_millis(
-                        150 * u64::from(attempt + 1),
-                    ));
-                }
-            }
-        }
-    }
-    Err(last_err.expect("loop runs at least once"))
-}
-
-/// Rewraps an [`std::io::Error`] with `path` folded into its message — the bare OS message alone
-/// (e.g. "Access is denied. (os error 5)") doesn't say which of several files in this function was
-/// involved, which makes a report of this error impossible to act on.
-fn annotate_path(err: std::io::Error, path: &Path) -> std::io::Error {
-    std::io::Error::new(err.kind(), format!("{} ({})", err, path.display()))
 }
 
 /// Full restore-safety sequence (docs/backup-and-updates.md §1):
